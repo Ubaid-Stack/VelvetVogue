@@ -1,0 +1,79 @@
+/* Container */
+.glass-bubbles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Bubble Base Style */
+.glass-bubbles span {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  
+  /*  Glass Effect */
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  
+  /*  Glow & Shine */
+  box-shadow: 
+    0 0 18px rgba(255, 255, 255, 0.25),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.3),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.05);
+
+  animation: rise 12s linear infinite;
+  opacity: 0.8;
+}
+
+/* Random sizes for realism */
+.glass-bubbles span:nth-child(odd) {
+  width: 15px;
+  height: 15px;
+}
+
+.glass-bubbles span:nth-child(3n) {
+  width: 25px;
+  height: 25px;
+}
+
+/* ★ Random horizontal positions & speeds */
+.glass-bubbles span:nth-child(1) { left: 5%;  animation-duration: 13s; }
+.glass-bubbles span:nth-child(2) { left: 12%; animation-duration: 11s; }
+.glass-bubbles span:nth-child(3) { left: 20%; animation-duration: 10s; }
+.glass-bubbles span:nth-child(4) { left: 28%; animation-duration: 14s; }
+.glass-bubbles span:nth-child(5) { left: 35%; animation-duration: 9s; }
+.glass-bubbles span:nth-child(6) { left: 42%; animation-duration: 12s; }
+.glass-bubbles span:nth-child(7) { left: 48%; animation-duration: 15s; }
+.glass-bubbles span:nth-child(8) { left: 55%; animation-duration: 10s; }
+.glass-bubbles span:nth-child(9) { left: 60%; animation-duration: 13s; }
+.glass-bubbles span:nth-child(10) { left: 66%; animation-duration: 11s; }
+.glass-bubbles span:nth-child(11) { left: 72%; animation-duration: 12s; }
+.glass-bubbles span:nth-child(12) { left: 78%; animation-duration: 9s; }
+.glass-bubbles span:nth-child(13) { left: 84%; animation-duration: 14s; }
+.glass-bubbles span:nth-child(14) { left: 88%; animation-duration: 12s; }
+.glass-bubbles span:nth-child(15) { left: 92%; animation-duration: 15s; }
+.glass-bubbles span:nth-child(16) { left: 18%; animation-duration: 16s; }
+.glass-bubbles span:nth-child(17) { left: 44%; animation-duration: 13s; }
+.glass-bubbles span:nth-child(18) { left: 73%; animation-duration: 10s; }
+.glass-bubbles span:nth-child(19) { left: 57%; animation-duration: 17s; }
+.glass-bubbles span:nth-child(20) { left: 30%; animation-duration: 14s; }
+
+/* Floating Animation */
+@keyframes rise {
+  0% {
+    transform: translateY(110vh) scale(0.4);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(40vh) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-20vh) scale(0.5);
+    opacity: 0;
+  }
+}

@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20251115">
+    <link rel="stylesheet" href="style.css?v=20251116g">
+    <link rel="stylesheet" href="aimation.css?v=20251116c">
     <title>Home</title>
   </head>
   <body>
@@ -177,6 +178,107 @@
           </div>
           <button class="allProductsBtn">View All Products</button>
         </section>
+        <section class="state">
+          <div class="allState">
+              <h1>Trusted by Fashion Lovers Everywhere</h1>
+              <div>
+                <i class='bx  bxs-happy'></i> 
+                <h1><span class="count" data-target="5" data-suffix="K+">0</span></h1>
+                <p>Happy Customers</p>  
+              </div>
+              <div>
+                <i class='bx bxs-shopping-bag'></i> 
+                <h1><span class="count" data-target="300" data-suffix="+">0</span></h1>
+                <p>Daily Orders</p>
+              </div>
+              <div>
+                <i class='bx  bxs-user'></i> 
+                <h1><span class="count" data-target="95" data-suffix="%">0</span></h1>
+                <p>Customer Satisfaction</p>
+              </div>
+              <div>
+                <i class='bx  bxs-star'></i> 
+                <h1><span class="count" data-target="4.8" data-suffix="">0</span></h1>
+                <p>Average Customer Rating</p>
+              </div>
+          </div>
+        </section>
+        <!-- this is feedback section  -->
+        <section class="feedback-container">
+          <h1 class="feedback-head">Velvet Vogue Customer Says</h1>
+          <div class="carousel">
+            <div class="card">
+              <div class="rating-stars">
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+              </div>
+              <span class="feedback">
+                I absolutely love the quality of the clothes! Everything I ordered looks even better in real life. The fit is perfect, and delivery was super fast. This is now my go-to store for trendy outfits. Highly recommended!
+              </span>
+              <h3 class="customer-name">Mohamed Amhar</h3>
+              <span class="customer-status">Verified Customer</span>
+            </div>
+            <div class="card">
+              <div class="rating-stars">
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+              </div>
+              <span class="feedback">
+                Such an amazing shopping experience! The product descriptions were accurate, and the fabric quality is excellent. I've already received so many compliments on my new outfits. Will definitely shop again!
+              </span>
+              <h3 class="customer-name">Mohamed Akram</h3>
+              <span class="customer-status">Verified Buyer</span>
+            </div>
+            <div class="card">
+              <div class="rating-stars">
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+              </div>
+              <span class="feedback">
+                Great service and perfect clothing! The prices are fair, the styles are modern, and everything arrived neatly packed. I'm very impressed with the overall experience. This store stands out from the rest.
+              </span>
+              <h3 class="customer-name">Musni Ahamed</h3>
+              <span class="customer-status">Returning Customer</span>
+            </div>
+            <div class="card">
+              <div class="rating-stars">
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+              </div>
+              <span class="feedback">
+                My order arrived earlier than expected, and the clothes were exactly as shown on the website. The material feels premium and very comfortable. This is one of the best online clothing stores I've purchased from.
+              </span>
+              <h3 class="customer-name">Mohamed Munsif</h3>
+              <span class="customer-status">Happy Shopper</span>
+            </div>
+            <div class="card">
+              <div class="rating-stars">
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+                <i class='bx bxs-star'></i>
+              </div>
+              <span class="feedback">
+                The quality, the fit, the packaging — everything was perfect! I loved how smooth the checkout process was. This store truly understands fashion and customer satisfaction.
+              </span>
+              <h3 class="customer-name">Mohamed Ijath</h3>
+              <span class="customer-status">Verified Customer</span>
+            </div>
+          </div>
+        </section>
         <!-- this is newsletter section -->
         <section class="newsletter-section">
           <div class="newsletter-container">
@@ -190,6 +292,13 @@
               <button type="submit" class="newsletter-btn">Join Now</button>
             </form>
             <p class="newsletter-disclaimer">By subscribing, you agree to our Privacy Policy and consent to receive updates from our company.</p>
+          </div>
+          <div class="glass-bubbles">
+            <!-- 20 bubbles -->
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
           </div>
         </section>
       </main>
@@ -291,6 +400,35 @@
           }
         }
       });
+      // this is for count increment code
+      const counters = document.querySelectorAll(".count")
+      counters.forEach(count => {
+        const target = parseFloat(count.getAttribute('data-target'));
+        const suffix = count.getAttribute('data-suffix') || '';
+        const isDecimal = (target % 1) !== 0;
+        const step = target / 200;
+        let current = 0;
+        
+        const updateCount = () => {
+          current += step;
+          
+          if(current < target){
+            if(isDecimal){
+              count.textContent = current.toFixed(1) + suffix;
+            } else {
+              count.textContent = Math.ceil(current) + suffix;
+            }
+            requestAnimationFrame(updateCount);
+          } else {
+            if(isDecimal){
+              count.textContent = target.toFixed(1) + suffix;
+            } else {
+              count.textContent = target + suffix;
+            }
+          }
+        }
+        updateCount();
+      })
     </script>
   </body>
 </html>

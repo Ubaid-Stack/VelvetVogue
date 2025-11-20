@@ -10,7 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./assets/home.css?v=20251119g">
     <link rel="stylesheet" href="./assets/animation.css?v=20251119s">
-    <link rel="stylesheet" href="./assets/style.css?v=20251119g">
+    <link rel="stylesheet" href="./assets/style.css?v=20251120k">
     <title>Home</title>
   </head>
   <body>
@@ -22,14 +22,14 @@
             <ul class="nav-links">
                 <li><a href="index.php">Home</a></li>
                 <li><a href="shop.php" >Shop</a></li>
-                <li><a href="#">About</a></li>
+                <li><a href="about.php">About</a></li>
                 <li><a href="contact.php">Contact</a></li>
             </ul>
              <div class="nav-actions">
               <div class="menu"><i class='bx bx-search' id="searchIcon"></i></div>
               <a href="wishlist.php"><div class="menu" id="wishlist"><i class='bx bx-heart'></i></div></a>
               <a href="cart.php"><div class="menu" id="myCart"><i class='bx bx-cart'></i></div></a>
-              <div class="menu" id="profile"><i class='bx bx-user'></i></div>
+              <a href="login.php"><div class="menu" id="profile"><i class='bx bx-user'></i></div></a>
               <div class="menu" id="menuToggle"><i class='bx bx-menu'></i></div>
             </div>
             <!-- this is for search bar -->
@@ -43,10 +43,10 @@
           <ul class="mobile-nav-links">
             <li><a href="index.php"><i class='bx bx-home-alt'></i> Home</a></li>
             <li><a href="shop.php"><i class='bx bx-store'></i> Shop</a></li>
-            <li><a href="#"><i class='bx bx-info-circle'></i> About</a></li>
+            <li><a href="about.php"><i class='bx bx-info-circle'></i> About</a></li>
             <li><a href="contact.php"><i class='bx bx-envelope'></i> Contact</a></li>
             <li class="mobile-divider"></li>
-            <li><a href="profile.php"><i class='bx bx-user'></i> My Profile</a></li>
+            <li><a href="login.php"><i class='bx bx-user'></i> My Profile</a></li>
             <li><a href="wishlist.php"><i class='bx bx-heart'></i> My Wishlist</a></li>
             <li><a href="cart.php"><i class='bx bx-cart'></i> My Cart</a></li>
           </ul>

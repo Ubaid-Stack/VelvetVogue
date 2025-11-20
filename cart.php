@@ -3,8 +3,10 @@
 
     <!-- Cart page content outside body-con wrapper -->
     <section class="cart-con">
-        <h2 class="cart-title">My Shopping Cart</h2>
-        <p class="cart-subtext">Review the items in your cart before proceeding to checkout.</p>
+        <div class="about-title">
+            <h2 class="cart-title">My Shopping Cart</h2>
+            <p class="cart-subtext">Review the items in your cart before proceeding to checkout.</p>
+        </div>
         <div class="cart-items">
             <!-- Example cart item -->
             <div class="cart-item">

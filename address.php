@@ -91,7 +91,7 @@
         </main>
     </div>
 </section>
-
+</main>
 <!-- Add/Edit Address Modal -->
 <div class="address-modal" id="addressModal">
     <div class="address-modal-content">

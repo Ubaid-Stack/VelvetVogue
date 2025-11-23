@@ -17,10 +17,6 @@
                     <i class='bx bx-box'></i>
                     <span>My Orders</span>
                 </a>
-                <a href="#" class="profile-nav-item">
-                    <i class='bx bx-heart'></i>
-                    <span>Wishlist</span>
-                </a>
                 <a href="accountSetting.php" class="profile-nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'accountSetting.php' ? 'active' : ''; ?>">
                     <i class='bx bx-cog'></i>
                     <span>Account Settings</span>

@@ -86,7 +86,7 @@
         </main>
     </div>
 </section>
-
+</main>
 <script>
     // Profile Sidebar Toggle for Mobile/Tablet
     const menuToggle = document.getElementById('profileMenuToggle');

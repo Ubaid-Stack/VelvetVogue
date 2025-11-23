@@ -50,8 +50,27 @@
             <p>Subtotal: <span>$179.97</span></p>
             <p>Shipping: <span>Free</span></p>
             <p>Total Price: <span>$179.97</span></p>
-            <button class="checkout-btn">Proceed to Checkout</button>
+            <a href="checkout.php"><button class="checkout-btn">Proceed to Checkout</button></a>
         </div>
     </section>
 
+    <script>
+        document.querySelectorAll('.remove-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Removed from Cart!',
+                    text: 'Item has been removed from your cart',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    toast: true,
+                    position: 'top-end'
+
+                });
+                
+                // // Remove the cart item from DOM
+                // this.closest('.cart-item').remove();
+            });
+        });
+    </script>
 <?php include 'inc/footer.php'; ?>

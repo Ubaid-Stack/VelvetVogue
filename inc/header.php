@@ -10,7 +10,9 @@
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./assets/home.css?v=20251119g">
     <link rel="stylesheet" href="./assets/animation.css?v=20251119s">
-    <link rel="stylesheet" href="./assets/style.css?v=20251120k">
+    <link rel="stylesheet" href="./assets/style.css?v=20251123">
+    <link rel="stylesheet" href="./assets/product.css?v=20251121">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>Home</title>
   </head>
   <body>

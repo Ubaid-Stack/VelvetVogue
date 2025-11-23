@@ -70,80 +70,88 @@
                 <div class="like">
                 <i class='bx  bx-heart'></i> 
                 </div>
-                <picture>
-                    <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-                </picture>
-                <p class="product-name">T-Shirt</p>
-                <div class="stars">
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <span>(4.8)</span>
-              </div>
-              <span class="product-price">$19.99</span>
+                <a href="product.php" class="product-link">
+                    <picture>
+                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
+                    </picture>
+                    <p class="product-name">T-Shirt</p>
+                    <div class="stars">
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <span>(4.8)</span>
+                  </div>
+                  <span class="product-price">$19.99</span>
+                </a>
+                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
             </div>
              <div class="product-cart">
                 <!-- Product cards -->
                 <div class="like">
                 <i class='bx  bx-heart'></i> 
                 </div>
-                <picture>
-                    <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-                </picture>
-                <p class="product-name">T-Shirt</p>
-                <div class="stars">
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <span>(4.8)</span>
-              </div>
-              <span class="product-price">$19.99</span>
+                <a href="product.php" class="product-link">
+                    <picture>
+                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
+                    </picture>
+                    <p class="product-name">T-Shirt</p>
+                    <div class="stars">
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bxs-star'></i>
+                        <span>(4.8)</span>
+                  </div>
+                  <span class="product-price">$19.99</span>
+                </a>
+                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
             </div>
              <div class="product-cart">
                 <!-- Product cards -->
                 <div class="like">
                 <i class='bx  bx-heart'></i> 
                 </div>
-                <picture>
-                    <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-                </picture>
-                <p class="product-name">T-Shirt</p>
-                <div class="stars">
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <span>(4.8)</span>
-              </div>
-              <span class="product-price">$19.99</span>
+                <a href="product.php" class="product-link">
+                    <picture>
+                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
+                    </picture>
+                    <p class="product-name">T-Shirt</p>
+                    <div class="stars">
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <span>(4.8)</span>
+                  </div>
+                  <span class="product-price">$19.99</span>
+                </a>
+                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
             </div>
              <div class="product-cart">
                 <!-- Product cards -->
                 <div class="like">
                 <i class='bx  bx-heart'></i> 
                 </div>
-                <picture>
-                    <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-                </picture>
-                <p class="product-name">T-Shirt</p>
-                <div class="stars">
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <i class='bx bxs-star'></i>
-                    <span>(4.8)</span>
-              </div>
-              <span class="product-price">$19.99</span>
+                <a href="product.php" class="product-link">
+                    <picture>
+                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
+                    </picture>
+                    <p class="product-name">T-Shirt</p>
+                    <div class="stars">
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <i class='bx bxs-star'></i>
+                        <span>(4.8)</span>
+                  </div>
+                  <span class="product-price">$19.99</span>
+                </a>
+                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
             </div>
         </div>
     </section>
@@ -205,6 +213,21 @@
         document.querySelector('.apply-filter-btn').addEventListener('click', () => {
             console.log('Filters applied');
             closeFilter();
+        });
+
+        // Add to Cart with SweetAlert2
+        document.querySelectorAll('.addToCartBtn').forEach(button => {
+            button.addEventListener('click', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Added to Cart!',
+                    text: 'Product has been added to your cart',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    toast: true,
+                    position: 'top-end'
+                });
+            });
         });
     </script>
 <?php include './inc/footer.php'; ?>

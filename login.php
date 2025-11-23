@@ -23,4 +23,24 @@
             <p class="signup-link">Don't have an account? <a href="register.php">Sign up here</a></p>
         </div>
     </section>
+
+    <script>
+        document.querySelector('.login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Simulate login process
+            Swal.fire({
+                icon: 'success',
+                title: 'Login Successful!',
+                text: 'Welcome back to Velvet Vogue',
+                showConfirmButton: false,
+                timer: 1500,
+                toast: true,
+                position: 'top-end'
+            }).then(() => {
+                // Redirect to shop or dashboard after success
+                // window.location.href = 'shop.php';
+            });
+        });
+    </script>
 <?php include './inc/footer.php'; ?>

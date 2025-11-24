@@ -1,3 +1,16 @@
+<?php
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Critical Security Check - Verify admin authentication
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'admin') {
+    // Redirect to admin login page
+    header('Location: adminLogin.php');
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

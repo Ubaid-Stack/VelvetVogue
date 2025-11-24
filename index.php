@@ -3,11 +3,13 @@
           <div class="hero-content">
             <h1 class="main-text">Unleash Your Style with Velvet Vogue</h1>
             <p class="sub-text">Trendy, youthful, and bold — explore outfits that make every moment shine.</p>
-            <a href="#" class="shop-btn">Shop Now</a>
-            <a href="#" class="cat-btn">Explore Categories <i class='bx bx-chevron-right'></i></a>
+            <div class="button-group">
+              <a href="#" class="shop-btn">Shop Now</a>
+              <a href="#" class="cat-btn">Explore Categories <i class='bx bx-chevron-right'></i></a>
+            </div>
           </div>
           <figure class="hero-image-container">
-            <img src="heroImg.png" alt="Hero Image" class="hero-image" loading="eager">
+            <img src="./images/heroImg.png" alt="Hero Image" class="hero-image" loading="eager">
           </figure>
         </section>
         <section class="Categories-section">
@@ -60,68 +62,88 @@
         <section class="trending-product">
           <h2 class="section-title">Trending Products</h2>
           <div class="trending-container">
-            <div class="trending-cart">
-            <!-- Product cards will go here -->
-             <div class="like">
-              <i class='bx  bx-heart'></i> 
-             </div>
-              <picture>
-                <img src="./images/womensWear.webp" alt="Trending Product 1" class="trending-image" loading="lazy">
-                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-              </picture>
-              <p class="product-name">T-Shirt</p>
-              <div class="stars">
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <span>(4.8)</span>
+            <?php
+            require_once './inc/db.php';
+            
+            // Fetch trending/featured products (limited to 8)
+            $query = "SELECT p.product_id, p.product_name, p.price, p.original_price, p.discount_percentage, 
+                             pi.image_url, 
+                             COALESCE(AVG(r.rating), 0) as avg_rating,
+                             COUNT(r.review_id) as review_count
+                      FROM products p
+                      LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = TRUE
+                      LEFT JOIN reviews r ON p.product_id = r.product_id
+                      WHERE p.status = 'active' AND p.is_featured = 1
+                      GROUP BY p.product_id
+                      ORDER BY p.created_at DESC
+                      LIMIT 8";
+            
+            $result = $conn->query($query);
+            
+            if ($result && $result->num_rows > 0) {
+                while ($product = $result->fetch_assoc()) {
+                    $productId = $product['product_id'];
+                    $productName = htmlspecialchars($product['product_name']);
+                    $price = number_format($product['price'], 2);
+                    $originalPrice = $product['original_price'] ? number_format($product['original_price'], 2) : null;
+                    $discount = $product['discount_percentage'];
+                    $avgRating = round($product['avg_rating'], 1);
+                    $reviewCount = $product['review_count'];
+                    
+                    // Handle image URL
+                    $imageUrl = $product['image_url'] ?? './images/placeholder.jpg';
+                    if (strpos($imageUrl, '../images/') === 0) {
+                        $imageUrl = str_replace('../images/', './images/', $imageUrl);
+                    }
+                    
+                    // Generate star rating
+                    $fullStars = floor($avgRating);
+                    $halfStar = ($avgRating - $fullStars) >= 0.5;
+                    $emptyStars = 5 - $fullStars - ($halfStar ? 1 : 0);
+            ?>
+            <div class="trending-cart" data-product-id="<?php echo $productId; ?>">
+              <div class="like" onclick="toggleWishlist(<?php echo $productId; ?>, this)">
+                <i class='bx bx-heart'></i> 
               </div>
-              <span class="product-price">$19.99</span>
-            </div>
-            <div class="trending-cart">
-              <!-- Product cards -->
-               <div class="like">
-              <i class='bx  bx-heart'></i> 
-             </div>
+              <?php if ($discount > 0): ?>
+              <span class="discount-badge">-<?php echo $discount; ?>%</span>
+              <?php endif; ?>
               <picture>
-                <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
+                <img src="<?php echo $imageUrl; ?>" alt="<?php echo $productName; ?>" class="trending-image" loading="lazy">
+                <button class="addToCartBtn" onclick="addToCart(<?php echo $productId; ?>)">
+                  <i class='bx bxs-shopping-bag-alt'></i>Add to Cart
+                </button>
               </picture>
-              <p class="product-name">T-Shirt</p>
+              <a href="product.php?id=<?php echo $productId; ?>" class="product-name"><?php echo $productName; ?></a>
               <div class="stars">
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <span>(4.8)</span>
+                <?php 
+                for ($i = 0; $i < $fullStars; $i++) {
+                    echo "<i class='bx bxs-star'></i>";
+                }
+                if ($halfStar) {
+                    echo "<i class='bx bxs-star-half'></i>";
+                }
+                for ($i = 0; $i < $emptyStars; $i++) {
+                    echo "<i class='bx bx-star'></i>";
+                }
+                ?>
+                <span>(<?php echo $avgRating > 0 ? $avgRating : 'New'; ?>)</span>
               </div>
-              <span class="product-price">$19.99</span>
-            </div>
-            <div class="trending-cart">
-              <!-- Product cards -->
-               <div class="like">
-              <i class='bx  bx-heart'></i> 
-             </div>
-              <picture>
-                <img src="./images/womensWear.webp" alt="Trending Product 3" class="trending-image" loading="lazy">
-                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-              </picture>
-              <p class="product-name">T-Shirt</p>
-              <div class="stars">
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <span>(4.8)</span>
+              <div class="price-section">
+                <span class="product-price">$<?php echo $price; ?></span>
+                <?php if ($originalPrice): ?>
+                <span class="original-price">$<?php echo $originalPrice; ?></span>
+                <?php endif; ?>
               </div>
-              <span class="product-price">$19.99</span>
             </div>
+            <?php 
+                }
+            } else {
+                echo '<p style="grid-column: 1/-1; text-align: center; padding: 2rem;">No trending products available at the moment.</p>';
+            }
+            ?>
           </div>
-          <button class="allProductsBtn">View All Products</button>
+          <a href="shop.php" class="allProductsBtn">View All Products</a>
         </section>
         <section class="state">
           <div class="allState">
@@ -152,20 +174,7 @@
         <section class="feedback-container">
           <h1 class="feedback-head">Velvet Vogue Customer Says</h1>
           <div class="carousel">
-            <div class="card">
-              <div class="rating-stars">
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-              </div>
-              <span class="feedback">
-                I absolutely love the quality of the clothes! Everything I ordered looks even better in real life. The fit is perfect, and delivery was super fast. This is now my go-to store for trendy outfits. Highly recommended!
-              </span>
-              <h3 class="customer-name">Mohamed Amhar</h3>
-              <span class="customer-status">Verified Customer</span>
-            </div>
+            
             <div class="card">
               <div class="rating-stars">
                 <i class='bx bxs-star'></i>
@@ -208,20 +217,7 @@
               <h3 class="customer-name">Mohamed Munsif</h3>
               <span class="customer-status">Happy Shopper</span>
             </div>
-            <div class="card">
-              <div class="rating-stars">
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-                <i class='bx bxs-star'></i>
-              </div>
-              <span class="feedback">
-                The quality, the fit, the packaging — everything was perfect! I loved how smooth the checkout process was. This store truly understands fashion and customer satisfaction.
-              </span>
-              <h3 class="customer-name">Mohamed Ijath</h3>
-              <span class="customer-status">Verified Customer</span>
-            </div>
+  
           </div>
         </section>
         <!-- this is faq section -->
@@ -276,6 +272,111 @@
       </main>
       
     <script>
+      // Add to Cart function
+      function addToCart(productId) {
+        <?php if (isset($_SESSION['user_id'])): ?>
+          fetch('add_to_cart.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `product_id=${productId}&quantity=1`
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              Swal.fire({
+                icon: 'success',
+                title: 'Added to Cart!',
+                text: data.message,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+              });
+            } else if (data.login_required) {
+              window.location.href = 'login.php';
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+              });
+            }
+          })
+          .catch(error => console.error('Error:', error));
+        <?php else: ?>
+          Swal.fire({
+            icon: 'warning',
+            title: 'Please Login',
+            text: 'You need to login to add items to cart',
+            showCancelButton: true,
+            confirmButtonText: 'Login',
+            cancelButtonText: 'Cancel'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              window.location.href = 'login.php';
+            }
+          });
+        <?php endif; ?>
+      }
+
+      // Toggle Wishlist function
+      function toggleWishlist(productId, element) {
+        <?php if (isset($_SESSION['user_id'])): ?>
+          fetch('add_to_wishlist.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `product_id=${productId}`
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              const icon = element.querySelector('i');
+              if (data.action === 'added') {
+                icon.classList.remove('bx-heart');
+                icon.classList.add('bxs-heart');
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Added to Wishlist',
+                  toast: true,
+                  position: 'top-end',
+                  showConfirmButton: false,
+                  timer: 1500
+                });
+              } else {
+                icon.classList.remove('bxs-heart');
+                icon.classList.add('bx-heart');
+                Swal.fire({
+                  icon: 'info',
+                  title: 'Removed from Wishlist',
+                  toast: true,
+                  position: 'top-end',
+                  showConfirmButton: false,
+                  timer: 1500
+                });
+              }
+            }
+          })
+          .catch(error => console.error('Error:', error));
+        <?php else: ?>
+          Swal.fire({
+            icon: 'warning',
+            title: 'Please Login',
+            text: 'You need to login to add items to wishlist',
+            showCancelButton: true,
+            confirmButtonText: 'Login',
+            cancelButtonText: 'Cancel'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              window.location.href = 'login.php';
+            }
+          });
+        <?php endif; ?>
+      }
+
       // this is for count increment code
       const counters = document.querySelectorAll(".count")
       counters.forEach(count => {

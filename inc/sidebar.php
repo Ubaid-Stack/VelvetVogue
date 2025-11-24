@@ -21,9 +21,30 @@
                     <i class='bx bx-cog'></i>
                     <span>Account Settings</span>
                 </a>
-                <a href="#" class="profile-nav-item logout">
+                <a href="#" onclick="confirmLogout(event)" class="profile-nav-item logout">
                     <i class='bx bx-log-out'></i>
                     <span>Logout</span>
                 </a>
             </nav>
         </aside>
+        
+        <script>
+        function confirmLogout(event) {
+            event.preventDefault();
+            Swal.fire({
+                title: 'Logout?',
+                text: 'Are you sure you want to logout?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Logout',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#EF4444',
+                cancelButtonColor: '#6B7280',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'logout.php';
+                }
+            });
+        }
+        </script>

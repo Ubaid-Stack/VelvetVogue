@@ -1,4 +1,17 @@
+<?php   
+session_start();
+// Check if user is logged in
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+    header("Location: login.php");
+    exit();
+}
 
+require_once 'inc/db.php';
+
+$user_id = $_SESSION['user_id'];
+
+// Handle password change via AJAX (will be processed by JavaScript)
+?>
     <?php include 'inc/header.php'; ?>
 
     <section class="profile-con">
@@ -284,7 +297,7 @@
                 return;
             }
 
-            // Simulate API call
+            // Show loading
             Swal.fire({
                 title: 'Updating Password...',
                 allowOutsideClick: false,
@@ -293,15 +306,44 @@
                 }
             });
 
-            setTimeout(() => {
+            // Send to backend
+            const formData = new FormData();
+            formData.append('currentPassword', currentPassword);
+            formData.append('newPassword', newPassword);
+            formData.append('confirmPassword', confirmPassword);
+
+            fetch('update_password.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonColor: '#3C91E6'
+                    });
+                    document.getElementById('passwordForm').reset();
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: data.message,
+                        icon: 'error',
+                        confirmButtonColor: '#EF4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
                 Swal.fire({
-                    title: 'Success!',
-                    text: 'Your password has been updated successfully',
-                    icon: 'success',
-                    confirmButtonColor: '#3C91E6'
+                    title: 'Error!',
+                    text: 'An error occurred. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#EF4444'
                 });
-                document.getElementById('passwordForm').reset();
-            }, 1500);
+            });
         }
 
         // Toggle Notification

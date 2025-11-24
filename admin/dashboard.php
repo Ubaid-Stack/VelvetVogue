@@ -1,6 +1,100 @@
-<?php 
+<?php   
+session_start();
+require_once '../inc/db.php';
+
+// Check if admin is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
+    header('Location: adminLogin.php');
+    exit();
+}
+
 $pageTitle = 'Dashboard';
 $pageSubtitle = 'Overview of your store performance';
+
+// Fetch total revenue from delivered/processing/shipped orders
+$revenue_sql = "SELECT SUM(total_amount) as total_revenue FROM orders 
+                WHERE order_status IN ('delivered', 'processing', 'shipped')";
+$revenue_result = $conn->query($revenue_sql);
+$total_revenue = $revenue_result->fetch_assoc()['total_revenue'] ?? 0;
+
+// Fetch total orders
+$orders_sql = "SELECT COUNT(*) as total_orders FROM orders";
+$orders_result = $conn->query($orders_sql);
+$total_orders = $orders_result->fetch_assoc()['total_orders'] ?? 0;
+
+// Fetch total customers
+$customers_sql = "SELECT COUNT(*) as total_customers FROM users WHERE user_type = 'customer'";
+$customers_result = $conn->query($customers_sql);
+$total_customers = $customers_result->fetch_assoc()['total_customers'] ?? 0;
+
+// Calculate average order value
+$avg_order = $total_orders > 0 ? $total_revenue / $total_orders : 0;
+
+// Fetch sales by category
+$category_sql = "SELECT c.category_name, 
+                 SUM(oi.subtotal) as total_sales,
+                 COUNT(DISTINCT oi.order_id) as order_count
+                 FROM order_items oi
+                 JOIN products p ON oi.product_id = p.product_id
+                 JOIN categories c ON p.category_id = c.category_id
+                 JOIN orders o ON oi.order_id = o.order_id
+                 WHERE o.order_status IN ('delivered', 'processing', 'shipped')
+                 GROUP BY c.category_id, c.category_name
+                 ORDER BY total_sales DESC
+                 LIMIT 4";
+$category_result = $conn->query($category_sql);
+$categories = [];
+$max_category_sales = 0;
+if ($category_result) {
+    while ($row = $category_result->fetch_assoc()) {
+        $categories[] = $row;
+        if ($row['total_sales'] > $max_category_sales) {
+            $max_category_sales = $row['total_sales'];
+        }
+    }
+}
+
+// Fetch top products
+$top_products_sql = "SELECT p.product_name,
+                     COUNT(oi.order_item_id) as sales_count,
+                     SUM(oi.subtotal) as revenue,
+                     SUM(oi.quantity) as total_quantity
+                     FROM order_items oi
+                     JOIN products p ON oi.product_id = p.product_id
+                     JOIN orders o ON oi.order_id = o.order_id
+                     WHERE o.order_status IN ('delivered', 'processing', 'shipped')
+                     GROUP BY p.product_id, p.product_name
+                     ORDER BY revenue DESC
+                     LIMIT 5";
+$top_products_result = $conn->query($top_products_sql);
+$top_products = [];
+$max_product_revenue = 0;
+if ($top_products_result) {
+    while ($row = $top_products_result->fetch_assoc()) {
+        $top_products[] = $row;
+        if ($row['revenue'] > $max_product_revenue) {
+            $max_product_revenue = $row['revenue'];
+        }
+    }
+}
+
+// Fetch monthly revenue for chart (last 12 months)
+$monthly_revenue_sql = "SELECT 
+                        DATE_FORMAT(order_date, '%Y-%m') as month,
+                        DATE_FORMAT(order_date, '%b') as month_name,
+                        SUM(total_amount) as revenue
+                        FROM orders
+                        WHERE order_status IN ('delivered', 'processing', 'shipped')
+                        AND order_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                        GROUP BY DATE_FORMAT(order_date, '%Y-%m'), DATE_FORMAT(order_date, '%b')
+                        ORDER BY month ASC";
+$monthly_revenue_result = $conn->query($monthly_revenue_sql);
+$monthly_data = [];
+if ($monthly_revenue_result) {
+    while ($row = $monthly_revenue_result->fetch_assoc()) {
+        $monthly_data[] = $row;
+    }
+}
 ?>
 <?php include './inc/head.php'; ?>
 
@@ -31,11 +125,7 @@ $pageSubtitle = 'Overview of your store performance';
                     </div>
                     <div class="stat-content">
                         <span class="stat-label">Revenue</span>
-                        <h3 class="stat-value">$124,590</h3>
-                        <div class="stat-trend positive">
-                            <i class='bx bx-trending-up'></i>
-                            <span>+12.5%</span>
-                        </div>
+                        <h3 class="stat-value">$<?php echo number_format($total_revenue, 2); ?></h3>
                     </div>
                 </div>
 
@@ -45,11 +135,7 @@ $pageSubtitle = 'Overview of your store performance';
                     </div>
                     <div class="stat-content">
                         <span class="stat-label">Orders</span>
-                        <h3 class="stat-value">1,247</h3>
-                        <div class="stat-trend positive">
-                            <i class='bx bx-trending-up'></i>
-                            <span>+8.2%</span>
-                        </div>
+                        <h3 class="stat-value"><?php echo number_format($total_orders); ?></h3>
                     </div>
                 </div>
 
@@ -59,11 +145,7 @@ $pageSubtitle = 'Overview of your store performance';
                     </div>
                     <div class="stat-content">
                         <span class="stat-label">Customers</span>
-                        <h3 class="stat-value">8,432</h3>
-                        <div class="stat-trend positive">
-                            <i class='bx bx-trending-up'></i>
-                            <span>+15.7%</span>
-                        </div>
+                        <h3 class="stat-value"><?php echo number_format($total_customers); ?></h3>
                     </div>
                 </div>
 
@@ -73,11 +155,7 @@ $pageSubtitle = 'Overview of your store performance';
                     </div>
                     <div class="stat-content">
                         <span class="stat-label">Avg Order</span>
-                        <h3 class="stat-value">$99.83</h3>
-                        <div class="stat-trend negative">
-                            <i class='bx bx-trending-down'></i>
-                            <span>-2.3%</span>
-                        </div>
+                        <h3 class="stat-value">$<?php echo number_format($avg_order, 2); ?></h3>
                     </div>
                 </div>
             </div>
@@ -98,42 +176,25 @@ $pageSubtitle = 'Overview of your store performance';
                         <h3>Sales by Category</h3>
                     </div>
                     <div class="chart-container">
-                        <div class="category-bar">
-                            <div class="category-info">
-                                <span class="category-name">Dresses</span>
-                                <span class="category-value">$43,606</span>
+                        <?php if (empty($categories)): ?>
+                            <div style="text-align: center; padding: 20px; color: #666;">
+                                <p>No category data available</p>
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 85%;"></div>
+                        <?php else: ?>
+                            <?php foreach ($categories as $category): 
+                                $percentage = $max_category_sales > 0 ? ($category['total_sales'] / $max_category_sales) * 100 : 0;
+                            ?>
+                            <div class="category-bar">
+                                <div class="category-info">
+                                    <span class="category-name"><?php echo htmlspecialchars($category['category_name']); ?></span>
+                                    <span class="category-value">$<?php echo number_format($category['total_sales'], 2); ?></span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: <?php echo round($percentage); ?>%;"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="category-bar">
-                            <div class="category-info">
-                                <span class="category-name">Outerwear</span>
-                                <span class="category-value">$34,885</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 68%;"></div>
-                            </div>
-                        </div>
-                        <div class="category-bar">
-                            <div class="category-info">
-                                <span class="category-name">Accessories</span>
-                                <span class="category-value">$27,410</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 53%;"></div>
-                            </div>
-                        </div>
-                        <div class="category-bar">
-                            <div class="category-info">
-                                <span class="category-name">Jewelry</span>
-                                <span class="category-value">$18,689</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 36%;"></div>
-                            </div>
-                        </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -154,56 +215,28 @@ $pageSubtitle = 'Overview of your store performance';
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Silk Evening Dress</td>
-                                <td>145</td>
-                                <td>$43,355</td>
-                                <td>
-                                    <div class="performance-bar">
-                                        <div class="performance-fill" style="width: 92%;"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Cashmere Coat</td>
-                                <td>98</td>
-                                <td>$44,100</td>
-                                <td>
-                                    <div class="performance-bar">
-                                        <div class="performance-fill" style="width: 78%;"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Leather Handbag</td>
-                                <td>87</td>
-                                <td>$24,360</td>
-                                <td>
-                                    <div class="performance-bar">
-                                        <div class="performance-fill" style="width: 65%;"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Designer Sunglasses</td>
-                                <td>76</td>
-                                <td>$18,240</td>
-                                <td>
-                                    <div class="performance-bar">
-                                        <div class="performance-fill" style="width: 58%;"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Gold Necklace</td>
-                                <td>54</td>
-                                <td>$21,600</td>
-                                <td>
-                                    <div class="performance-bar">
-                                        <div class="performance-fill" style="width: 45%;"></div>
-                                    </div>
-                                </td>
-                            </tr>
+                            <?php if (empty($top_products)): ?>
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 20px; color: #666;">
+                                        No product data available
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($top_products as $product): 
+                                    $performance = $max_product_revenue > 0 ? ($product['revenue'] / $max_product_revenue) * 100 : 0;
+                                ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($product['product_name']); ?></td>
+                                    <td><?php echo number_format($product['sales_count']); ?></td>
+                                    <td>$<?php echo number_format($product['revenue'], 2); ?></td>
+                                    <td>
+                                        <div class="performance-bar">
+                                            <div class="performance-fill" style="width: <?php echo round($performance); ?>%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -235,13 +268,30 @@ $pageSubtitle = 'Overview of your store performance';
         gradient.addColorStop(0, 'rgba(60, 145, 230, 0.3)');
         gradient.addColorStop(1, 'rgba(60, 145, 230, 0)');
 
+        <?php
+        // Prepare chart data
+        $chart_labels = [];
+        $chart_data = [];
+        
+        if (!empty($monthly_data)) {
+            foreach ($monthly_data as $month) {
+                $chart_labels[] = $month['month_name'];
+                $chart_data[] = floatval($month['revenue']);
+            }
+        } else {
+            // Default empty data
+            $chart_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            $chart_data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        }
+        ?>
+
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'],
+                labels: <?php echo json_encode($chart_labels); ?>,
                 datasets: [{
                     label: 'Revenue',
-                    data: [45000, 52000, 48000, 61000, 58000, 67000, 73000, 69000, 78000, 82000, 88000, 94000],
+                    data: <?php echo json_encode($chart_data); ?>,
                     borderColor: '#3C91E6',
                     backgroundColor: gradient,
                     borderWidth: 3,

@@ -1,4 +1,68 @@
-<?php include './inc/header.php'; ?>
+<?php 
+session_start();
+include './inc/db.php';
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+    header('Location: login.php?redirect=checkout.php');
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Fetch user information
+$userQuery = "SELECT * FROM users WHERE user_id = ?";
+$userStmt = $conn->prepare($userQuery);
+$userStmt->bind_param("i", $user_id);
+$userStmt->execute();
+$user = $userStmt->get_result()->fetch_assoc();
+$userStmt->close();
+
+// Fetch cart items with product and variant details
+$cartQuery = "SELECT c.*, p.product_name, p.price, 
+              pv.size, pv.color, pv.additional_price, pv.stock_quantity,
+              pi.image_url
+              FROM cart c
+              INNER JOIN products p ON c.product_id = p.product_id
+              LEFT JOIN product_variants pv ON c.variant_id = pv.variant_id
+              LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+              WHERE c.user_id = ?";
+$cartStmt = $conn->prepare($cartQuery);
+$cartStmt->bind_param("i", $user_id);
+$cartStmt->execute();
+$cartResult = $cartStmt->get_result();
+$cartItems = [];
+$subtotal = 0;
+
+while ($item = $cartResult->fetch_assoc()) {
+    // Fix image path
+    if ($item['image_url']) {
+        $item['image_url'] = str_replace('../images/', './images/', $item['image_url']);
+    }
+    
+    $item_price = $item['price'] + ($item['additional_price'] ?? 0);
+    $item['item_total'] = $item_price * $item['quantity'];
+    $subtotal += $item['item_total'];
+    $cartItems[] = $item;
+}
+$cartStmt->close();
+
+// Calculate shipping and tax
+$shipping_cost = 0; // Free standard shipping
+$tax_rate = 0.08; // 8% tax
+$tax_amount = $subtotal * $tax_rate;
+$total = $subtotal + $shipping_cost + $tax_amount;
+
+// Fetch user's saved addresses
+$addressQuery = "SELECT * FROM addresses WHERE user_id = ? AND is_default = 1 LIMIT 1";
+$addressStmt = $conn->prepare($addressQuery);
+$addressStmt->bind_param("i", $user_id);
+$addressStmt->execute();
+$savedAddress = $addressStmt->get_result()->fetch_assoc();
+$addressStmt->close();
+
+include './inc/header.php'; 
+?>
    
     <section class="checkout-con">
         <div class="process-flow-con">
@@ -21,35 +85,40 @@
                 <h3>Contact Information</h3>
                 <form class="contact-form" action="#" method="post">
                     <label for="email">Email Address:</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+                    <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" placeholder="Enter your email address" required>
 
                     <label for="phone">Phone Number:</label>
-                    <input type="tel" id="phone" name="phone" placeholder="Enter your phone number" required>
-
-                    <span class="">Already have an account? <a href="#">Log in</a></span>
+                    <input type="tel" id="phone" name="phone" value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" placeholder="Enter your phone number" required>
                 </form>
             </div>
             <div class="shipping-address">
+                <h3>Shipping Address</h3>
                 <form class="shipping-form" method="post" action="">
+                    <?php
+                    $nameParts = explode(' ', $user['full_name'] ?? '', 2);
+                    $firstName = $nameParts[0] ?? '';
+                    $lastName = $nameParts[1] ?? '';
+                    ?>
                     <label for="firstName">First Name:</label>
-                    <input type="text" id="firstName" name="firstName" placeholder="Enter your first name" required>
+                    <input type="text" id="firstName" name="firstName" value="<?php echo htmlspecialchars($firstName); ?>" placeholder="Enter your first name" required>
 
                     <label for="lastName">Last Name:</label>
-                    <input type="text" id="lastName" name="lastName" placeholder="Enter your last name" required>
+                    <input type="text" id="lastName" name="lastName" value="<?php echo htmlspecialchars($lastName); ?>" placeholder="Enter your last name" required>
+
+                    <label for="address">Street Address:</label>
+                    <input type="text" id="address" name="address" value="<?php echo htmlspecialchars($savedAddress['street_address'] ?? ''); ?>" placeholder="Enter your street address" required>
 
                     <label for="apartment">Apartment, suite, etc. (optional):</label>
-                    <input type="text" id="apartment" name="apartment" placeholder="Enter your apartment number">
+                    <input type="text" id="apartment" name="apartment" value="<?php echo htmlspecialchars($savedAddress['apartment'] ?? ''); ?>" placeholder="Enter your apartment number">
 
                     <label for="city">City:</label>
-                    <input type="text" id="city" name="city" placeholder="Enter your city" required>
+                    <input type="text" id="city" name="city" value="<?php echo htmlspecialchars($savedAddress['city'] ?? ''); ?>" placeholder="Enter your city" required>
 
                     <label for="state">State/Province:</label>
-                    <input type="text" id="state" name="state" placeholder="Enter your state or province" required>
+                    <input type="text" id="state" name="state" value="<?php echo htmlspecialchars($savedAddress['state'] ?? ''); ?>" placeholder="Enter your state or province" required>
 
                     <label for="zip">ZIP/Postal Code:</label>
-                    <input type="text" id="zip" name="zip" placeholder="Enter your ZIP or postal code" required>
-
-
+                    <input type="text" id="zip" name="zip" value="<?php echo htmlspecialchars($savedAddress['zip_code'] ?? ''); ?>" placeholder="Enter your ZIP or postal code" required>
                 </form>
             </div>
             <div class="shippinng-method">
@@ -70,8 +139,8 @@
                         </label>
                     </div>
                     <div class="method-option">
-                        <input type="radio" id="express" name="shippingMethod" value="express">
-                        <label for="express">
+                        <input type="radio" id="overnight" name="shippingMethod" value="overnight">
+                        <label for="overnight">
                             <span class="method-name">Overnight Shipping</span>
                             <span class="method-details">Delivery in 1 business day - $25.00</span>
                         </label>
@@ -117,23 +186,21 @@
             <h2>Order Summary</h2>
             
             <div class="summary-items">
-                <div class="summary-item">
-                    <img src="./images/product1.jpg" alt="Velvet Evening Dress">
-                    <div class="item-details">
-                        <h4>Velvet Evening Dress</h4>
-                        <p class="item-variant">Black / M</p>
-                    </div>
-                    <span class="item-price">$129.99</span>
-                </div>
-                
-                <div class="summary-item">
-                    <img src="./images/product2.jpg" alt="Classic Fitted Blazer">
-                    <div class="item-details">
-                        <h4>Classic Fitted Blazer</h4>
-                        <p class="item-variant">Navy / L</p>
-                    </div>
-                    <span class="item-price">$139.98</span>
-                </div>
+                <?php if (!empty($cartItems)): ?>
+                    <?php foreach ($cartItems as $item): ?>
+                        <div class="summary-item">
+                            <img src="<?php echo htmlspecialchars($item['image_url'] ?? './images/product1.jpg'); ?>" alt="<?php echo htmlspecialchars($item['product_name']); ?>">
+                            <div class="item-details">
+                                <h4><?php echo htmlspecialchars($item['product_name']); ?></h4>
+                                <p class="item-variant"><?php echo htmlspecialchars($item['color'] ?? 'N/A'); ?> / <?php echo htmlspecialchars($item['size'] ?? 'N/A'); ?></p>
+                                <p class="item-quantity">Qty: <?php echo $item['quantity']; ?></p>
+                            </div>
+                            <span class="item-price">$<?php echo number_format($item['item_total'], 2); ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p style="text-align: center; padding: 2rem; color: #666;">Your cart is empty</p>
+                <?php endif; ?>
             </div>
             
             <div class="discount-code">
@@ -144,19 +211,19 @@
             <div class="summary-pricing">
                 <div class="price-row">
                     <span>Subtotal</span>
-                    <span>$269.97</span>
+                    <span>$<?php echo number_format($subtotal, 2); ?></span>
                 </div>
                 <div class="price-row">
-                    <span>Shipping (Standard Shipping)</span>
-                    <span>$5.99</span>
+                    <span>Shipping</span>
+                    <span id="shipping-cost"><?php echo $shipping_cost == 0 ? 'Free' : '$' . number_format($shipping_cost, 2); ?></span>
                 </div>
                 <div class="price-row">
                     <span>Tax (8%)</span>
-                    <span>$21.60</span>
+                    <span>$<?php echo number_format($tax_amount, 2); ?></span>
                 </div>
                 <div class="price-row total-row">
                     <span>Total</span>
-                    <span class="total-amount">$297.56</span>
+                    <span class="total-amount" id="order-total">$<?php echo number_format($total, 2); ?></span>
                 </div>
             </div>
             
@@ -167,5 +234,34 @@
             </div>
         </aside>
     </section>
+    
+    <script>
+        // Update shipping cost and total when shipping method changes
+        const subtotal = <?php echo $subtotal; ?>;
+        const taxAmount = <?php echo $tax_amount; ?>;
+        
+        document.querySelectorAll('input[name="shippingMethod"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                let shippingCost = 0;
+                
+                switch(this.value) {
+                    case 'standard':
+                        shippingCost = 0;
+                        break;
+                    case 'express':
+                        shippingCost = 15.00;
+                        break;
+                    case 'overnight':
+                        shippingCost = 25.00;
+                        break;
+                }
+                
+                const total = subtotal + shippingCost + taxAmount;
+                
+                document.getElementById('shipping-cost').textContent = shippingCost === 0 ? 'Free' : '$' + shippingCost.toFixed(2);
+                document.getElementById('order-total').textContent = '$' + total.toFixed(2);
+            });
+        });
+    </script>
 </main>
 <?php include './inc/footer.php'; ?>

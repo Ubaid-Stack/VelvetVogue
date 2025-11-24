@@ -1,6 +1,118 @@
 <?php 
+session_start();
+require_once '../inc/db.php';
+
+// Check if admin is logged in - This is now redundant due to head.php check
+// Additional check here for direct access before head.php is included
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
+    header('Location: adminLogin.php');
+    exit();
+}
+
 $pageTitle = 'Manage Orders';
 $pageSubtitle = 'Track and manage customer orders';
+
+// Handle order status update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $response = ['success' => false, 'message' => ''];
+    
+    if ($_POST['action'] === 'update_status') {
+        $order_id = intval($_POST['order_id']);
+        $new_status = $_POST['new_status'];
+        
+        // Validate status
+        $valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+        if (in_array($new_status, $valid_statuses)) {
+            $update_fields = ['order_status = ?'];
+            $params = [$new_status];
+            $types = 's';
+            
+            // Update shipped_date if status is shipped
+            if ($new_status === 'shipped') {
+                $update_fields[] = 'shipped_date = NOW()';
+            }
+            
+            // Update delivered_date if status is delivered
+            if ($new_status === 'delivered') {
+                $update_fields[] = 'delivered_date = NOW()';
+            }
+            
+            $sql = "UPDATE orders SET " . implode(', ', $update_fields) . " WHERE order_id = ?";
+            $params[] = $order_id;
+            $types .= 'i';
+            
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param($types, ...$params);
+            
+            if ($stmt->execute()) {
+                $response['success'] = true;
+                $response['message'] = 'Order status updated successfully!';
+            } else {
+                $response['message'] = 'Failed to update order status.';
+            }
+            $stmt->close();
+        } else {
+            $response['message'] = 'Invalid order status.';
+        }
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit();
+}
+
+// Fetch orders with user and address info
+$sql = "SELECT o.*, 
+        u.username, u.email as user_email, u.phone as user_phone,
+        a.full_name, a.phone as shipping_phone, a.address_line1, a.address_line2, 
+        a.city, a.state, a.zip_code, a.country,
+        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.order_id) as item_count
+        FROM orders o
+        JOIN users u ON o.user_id = u.user_id
+        JOIN addresses a ON o.address_id = a.address_id
+        ORDER BY o.order_date DESC";
+
+$orders_result = $conn->query($sql);
+$orders = [];
+if ($orders_result) {
+    while ($row = $orders_result->fetch_assoc()) {
+        $orders[] = $row;
+    }
+}
+
+// Calculate statistics
+$total_orders = count($orders);
+$pending_count = 0;
+$processing_count = 0;
+$shipped_count = 0;
+$delivered_count = 0;
+$cancelled_count = 0;
+$total_revenue = 0;
+
+foreach ($orders as $order) {
+    switch ($order['order_status']) {
+        case 'pending':
+            $pending_count++;
+            break;
+        case 'processing':
+            $processing_count++;
+            break;
+        case 'shipped':
+            $shipped_count++;
+            break;
+        case 'delivered':
+            $delivered_count++;
+            break;
+        case 'cancelled':
+            $cancelled_count++;
+            break;
+    }
+    
+    // Add to revenue only for completed orders
+    if (in_array($order['order_status'], ['delivered', 'processing', 'shipped'])) {
+        $total_revenue += $order['total_amount'];
+    }
+}
 ?>
 <?php include './inc/head.php'; ?>
 
@@ -15,32 +127,32 @@ $pageSubtitle = 'Track and manage customer orders';
             <div class="order-stats-grid">
                 <div class="order-stat-card">
                     <span class="stat-label">Total Orders</span>
-                    <h3 class="stat-number">8</h3>
+                    <h3 class="stat-number"><?php echo $total_orders; ?></h3>
                 </div>
 
                 <div class="order-stat-card pending">
                     <span class="stat-label">Pending</span>
-                    <h3 class="stat-number">1</h3>
+                    <h3 class="stat-number"><?php echo $pending_count; ?></h3>
                 </div>
 
                 <div class="order-stat-card processing">
                     <span class="stat-label">Processing</span>
-                    <h3 class="stat-number">2</h3>
+                    <h3 class="stat-number"><?php echo $processing_count; ?></h3>
                 </div>
 
                 <div class="order-stat-card shipped">
                     <span class="stat-label">Shipped</span>
-                    <h3 class="stat-number">2</h3>
+                    <h3 class="stat-number"><?php echo $shipped_count; ?></h3>
                 </div>
 
                 <div class="order-stat-card delivered">
                     <span class="stat-label">Delivered</span>
-                    <h3 class="stat-number">2</h3>
+                    <h3 class="stat-number"><?php echo $delivered_count; ?></h3>
                 </div>
 
                 <div class="order-stat-card revenue">
                     <span class="stat-label">Revenue</span>
-                    <h3 class="stat-number">$3,939</h3>
+                    <h3 class="stat-number">$<?php echo number_format($total_revenue, 2); ?></h3>
                 </div>
             </div>
 
@@ -58,317 +170,89 @@ $pageSubtitle = 'Track and manage customer orders';
 
             <!-- Order Status Tabs -->
             <div class="order-tabs">
-                <button class="order-tab active" data-status="all">All Orders</button>
-                <button class="order-tab" data-status="pending">Pending (1)</button>
-                <button class="order-tab" data-status="processing">Processing (2)</button>
-                <button class="order-tab" data-status="shipped">Shipped (2)</button>
-                <button class="order-tab" data-status="delivered">Delivered (2)</button>
-                <button class="order-tab" data-status="cancelled">Cancelled (1)</button>
+                <button class="order-tab active" data-status="all">All Orders (<?php echo $total_orders; ?>)</button>
+                <button class="order-tab" data-status="pending">Pending (<?php echo $pending_count; ?>)</button>
+                <button class="order-tab" data-status="processing">Processing (<?php echo $processing_count; ?>)</button>
+                <button class="order-tab" data-status="shipped">Shipped (<?php echo $shipped_count; ?>)</button>
+                <button class="order-tab" data-status="delivered">Delivered (<?php echo $delivered_count; ?>)</button>
+                <button class="order-tab" data-status="cancelled">Cancelled (<?php echo $cancelled_count; ?>)</button>
             </div>
 
             <!-- Orders List -->
             <div class="orders-list">
                 
-                <!-- Order Card 1 -->
-                <div class="order-card" data-status="pending">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10234</h3>
-                            <p class="order-customer">Emma Thompson</p>
+                <?php if (empty($orders)): ?>
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <i class='bx bx-shopping-bag' style="font-size: 48px;"></i>
+                        <p style="margin-top: 16px; font-size: 18px;">No orders found</p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($orders as $order): 
+                        $order_date = date('M d, Y', strtotime($order['order_date']));
+                        $status = htmlspecialchars($order['order_status']);
+                        $status_text = ucfirst($status);
+                    ?>
+                    <!-- Order Card -->
+                    <div class="order-card" data-status="<?php echo $status; ?>">
+                        <div class="order-header">
+                            <div class="order-info">
+                                <h3 class="order-number"><?php echo htmlspecialchars($order['order_number']); ?></h3>
+                                <p class="order-customer"><?php echo htmlspecialchars($order['full_name']); ?></p>
+                            </div>
+                            <span class="order-status-badge <?php echo $status; ?>"><?php echo $status_text; ?></span>
                         </div>
-                        <span class="order-status-badge pending">Pending</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 15, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">3 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$789.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10234')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                        <button class="btn-action process" onclick="updateOrderStatus('10234', 'processing')">
-                            <i class='bx bx-check-circle'></i>
-                            <span>Mark as Processing</span>
-                        </button>
-                        <button class="btn-action cancel" onclick="cancelOrder('10234')">
-                            <span>Cancel</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Order Card 2 -->
-                <div class="order-card" data-status="processing">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10233</h3>
-                            <p class="order-customer">James Wilson</p>
-                        </div>
-                        <span class="order-status-badge processing">Processing</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 14, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">2 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$630.00</span>
+                        <div class="order-details">
+                            <div class="order-meta">
+                                <div class="meta-item">
+                                    <span class="meta-label">Date</span>
+                                    <span class="meta-value"><?php echo $order_date; ?></span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Items</span>
+                                    <span class="meta-value"><?php echo $order['item_count']; ?> items</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Total</span>
+                                    <span class="meta-value">$<?php echo number_format($order['total_amount'], 2); ?></span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10233')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                        <button class="btn-action ship" onclick="updateOrderStatus('10233', 'shipped')">
-                            <i class='bx bx-check-circle'></i>
-                            <span>Mark as Shipped</span>
-                        </button>
-                        <button class="btn-action cancel" onclick="cancelOrder('10233')">
-                            <span>Cancel</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Order Card 3 -->
-                <div class="order-card" data-status="shipped">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10232</h3>
-                            <p class="order-customer">Sophia Martinez</p>
-                        </div>
-                        <span class="order-status-badge shipped">Shipped</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 13, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">1 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$320.00</span>
-                            </div>
+                        <div class="order-actions">
+                            <button class="btn-action view" onclick="viewOrderDetails(<?php echo $order['order_id']; ?>)">
+                                <i class='bx bx-show'></i>
+                                <span>View Details</span>
+                            </button>
+                            
+                            <?php if ($status === 'pending'): ?>
+                                <button class="btn-action process" onclick="updateOrderStatus(<?php echo $order['order_id']; ?>, 'processing')">
+                                    <i class='bx bx-check-circle'></i>
+                                    <span>Mark as Processing</span>
+                                </button>
+                                <button class="btn-action cancel" onclick="updateOrderStatus(<?php echo $order['order_id']; ?>, 'cancelled')">
+                                    <span>Cancel</span>
+                                </button>
+                            <?php elseif ($status === 'processing'): ?>
+                                <button class="btn-action ship" onclick="updateOrderStatus(<?php echo $order['order_id']; ?>, 'shipped')">
+                                    <i class='bx bx-check-circle'></i>
+                                    <span>Mark as Shipped</span>
+                                </button>
+                                <button class="btn-action cancel" onclick="updateOrderStatus(<?php echo $order['order_id']; ?>, 'cancelled')">
+                                    <span>Cancel</span>
+                                </button>
+                            <?php elseif ($status === 'shipped'): ?>
+                                <button class="btn-action deliver" onclick="updateOrderStatus(<?php echo $order['order_id']; ?>, 'delivered')">
+                                    <i class='bx bx-check-circle'></i>
+                                    <span>Mark as Delivered</span>
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10232')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                        <button class="btn-action deliver" onclick="updateOrderStatus('10232', 'delivered')">
-                            <i class='bx bx-check-circle'></i>
-                            <span>Mark as Delivered</span>
-                        </button>
-                        <button class="btn-action cancel" onclick="cancelOrder('10232')">
-                            <span>Cancel</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Order Card 4 -->
-                <div class="order-card" data-status="delivered">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10231</h3>
-                            <p class="order-customer">Ava Davis</p>
-                        </div>
-                        <span class="order-status-badge delivered">Delivered</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 12, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">2 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$400.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10231')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Order Card 5 -->
-                <div class="order-card" data-status="processing">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10230</h3>
-                            <p class="order-customer">Liam Johnson</p>
-                        </div>
-                        <span class="order-status-badge processing">Processing</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 11, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">4 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$920.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10230')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                        <button class="btn-action ship" onclick="updateOrderStatus('10230', 'shipped')">
-                            <i class='bx bx-check-circle'></i>
-                            <span>Mark as Shipped</span>
-                        </button>
-                        <button class="btn-action cancel" onclick="cancelOrder('10230')">
-                            <span>Cancel</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Order Card 6 -->
-                <div class="order-card" data-status="shipped">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10229</h3>
-                            <p class="order-customer">Olivia Brown</p>
-                        </div>
-                        <span class="order-status-badge shipped">Shipped</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 10, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">1 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$280.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10229')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                        <button class="btn-action deliver" onclick="updateOrderStatus('10229', 'delivered')">
-                            <i class='bx bx-check-circle'></i>
-                            <span>Mark as Delivered</span>
-                        </button>
-                        <button class="btn-action cancel" onclick="cancelOrder('10229')">
-                            <span>Cancel</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Order Card 7 -->
-                <div class="order-card" data-status="delivered">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10228</h3>
-                            <p class="order-customer">Noah Garcia</p>
-                        </div>
-                        <span class="order-status-badge delivered">Delivered</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 09, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">3 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$560.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10228')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Order Card 8 -->
-                <div class="order-card" data-status="cancelled">
-                    <div class="order-header">
-                        <div class="order-info">
-                            <h3 class="order-number">#VV-10227</h3>
-                            <p class="order-customer">Isabella Lee</p>
-                        </div>
-                        <span class="order-status-badge cancelled">Cancelled</span>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Date</span>
-                                <span class="meta-value">Jan 08, 2024</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Items</span>
-                                <span class="meta-value">2 items</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Total</span>
-                                <span class="meta-value">$440.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-action view" onclick="viewOrderDetails('10227')">
-                            <i class='bx bx-show'></i>
-                            <span>View Details</span>
-                        </button>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
 
             </div>
+
+
 
         </section>
 
@@ -599,84 +483,71 @@ $pageSubtitle = 'Track and manage customer orders';
 
         // View Order Details
         function viewOrderDetails(orderId) {
-            // Sample order data - replace with actual API call
-            const orderData = {
-                '10234': {
-                    number: '#VV-10234',
-                    date: 'Jan 15, 2024',
-                    status: 'pending',
-                    statusText: 'Pending',
-                    total: '$789.00',
-                    customer: 'Emma Thompson',
-                    email: 'emma.thompson@email.com',
-                    phone: '+1 (555) 123-4567',
-                    address: '123 Main St, New York, NY 10001',
-                    subtotal: '$728.00',
-                    shipping: '$45.00',
-                    tax: '$16.00',
-                    items: [
-                        { name: 'Velvet Evening Dress', size: 'M', color: 'Burgundy', price: '$350.00', qty: 1, total: '$350.00' },
-                        { name: 'Silk Blouse', size: 'S', color: 'White', price: '$189.00', qty: 2, total: '$378.00' }
-                    ]
-                },
-                '10233': {
-                    number: '#VV-10233',
-                    date: 'Jan 14, 2024',
-                    status: 'processing',
-                    statusText: 'Processing',
-                    total: '$630.00',
-                    customer: 'James Wilson',
-                    email: 'james.wilson@email.com',
-                    phone: '+1 (555) 234-5678',
-                    address: '456 Oak Ave, Los Angeles, CA 90001',
-                    subtotal: '$580.00',
-                    shipping: '$35.00',
-                    tax: '$15.00',
-                    items: [
-                        { name: 'Designer Handbag', size: 'One Size', color: 'Black', price: '$420.00', qty: 1, total: '$420.00' },
-                        { name: 'Leather Belt', size: 'M', color: 'Brown', price: '$160.00', qty: 1, total: '$160.00' }
-                    ]
-                }
-            };
+            // Fetch order details from API
+            fetch(`get_order.php?id=${orderId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const order = data.order;
+                        
+                        // Populate modal
+                        document.getElementById('modalOrderNumber').textContent = order.order_number;
+                        document.getElementById('modalOrderDate').textContent = order.order_date;
+                        document.getElementById('modalOrderStatus').textContent = order.order_status.charAt(0).toUpperCase() + order.order_status.slice(1);
+                        document.getElementById('modalOrderStatus').className = `order-status-badge ${order.order_status}`;
+                        document.getElementById('modalOrderTotal').textContent = '$' + order.total_amount;
+                        document.getElementById('modalCustomerName').textContent = order.customer_name;
+                        document.getElementById('modalCustomerEmail').textContent = order.customer_email;
+                        document.getElementById('modalCustomerPhone').textContent = order.customer_phone;
+                        document.getElementById('modalShippingAddress').textContent = order.shipping_address_full;
+                        document.getElementById('modalSubtotal').textContent = '$' + order.subtotal;
+                        document.getElementById('modalShipping').textContent = '$' + order.shipping_cost;
+                        document.getElementById('modalTax').textContent = '$' + order.tax_amount;
+                        document.getElementById('modalSummaryTotal').textContent = '$' + order.total_amount;
 
-            // Get order data or use default
-            const order = orderData[orderId] || orderData['10234'];
+                        // Populate items
+                        const itemsList = document.getElementById('modalOrderItems');
+                        itemsList.innerHTML = order.items.map(item => {
+                            const imagePath = item.image_url ? `../${item.image_url}` : '../images/hero-img.png';
+                            const itemName = item.product_name || 'Product';
+                            const size = item.size || 'N/A';
+                            const color = item.color || 'N/A';
+                            const unitPrice = parseFloat(item.unit_price).toFixed(2);
+                            const subtotal = parseFloat(item.subtotal).toFixed(2);
+                            
+                            return `
+                                <div class="order-item">
+                                    <div class="item-image">
+                                        <img src="${imagePath}" alt="${itemName}">
+                                    </div>
+                                    <div class="item-details">
+                                        <h4 class="item-name">${itemName}</h4>
+                                        <p class="item-meta">Size: ${size} | Color: ${color}</p>
+                                        <p class="item-price">$${unitPrice} × ${item.quantity}</p>
+                                    </div>
+                                    <div class="item-total">
+                                        <span class="item-total-price">$${subtotal}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
 
-            // Populate modal
-            document.getElementById('modalOrderNumber').textContent = order.number;
-            document.getElementById('modalOrderDate').textContent = order.date;
-            document.getElementById('modalOrderStatus').textContent = order.statusText;
-            document.getElementById('modalOrderStatus').className = `order-status-badge ${order.status}`;
-            document.getElementById('modalOrderTotal').textContent = order.total;
-            document.getElementById('modalCustomerName').textContent = order.customer;
-            document.getElementById('modalCustomerEmail').textContent = order.email;
-            document.getElementById('modalCustomerPhone').textContent = order.phone;
-            document.getElementById('modalShippingAddress').textContent = order.address;
-            document.getElementById('modalSubtotal').textContent = order.subtotal;
-            document.getElementById('modalShipping').textContent = order.shipping;
-            document.getElementById('modalTax').textContent = order.tax;
-            document.getElementById('modalSummaryTotal').textContent = order.total;
-
-            // Populate items
-            const itemsList = document.getElementById('modalOrderItems');
-            itemsList.innerHTML = order.items.map(item => `
-                <div class="order-item">
-                    <div class="item-image">
-                        <img src="../images/hero-img.png" alt="${item.name}">
-                    </div>
-                    <div class="item-details">
-                        <h4 class="item-name">${item.name}</h4>
-                        <p class="item-meta">Size: ${item.size} | Color: ${item.color}</p>
-                        <p class="item-price">${item.price} × ${item.qty}</p>
-                    </div>
-                    <div class="item-total">
-                        <span class="item-total-price">${item.total}</span>
-                    </div>
-                </div>
-            `).join('');
-
-            // Show modal
-            document.getElementById('orderDetailsModal').classList.add('active');
+                        // Show modal
+                        document.getElementById('orderDetailsModal').classList.add('active');
+                    } else {
+                        Toast.fire({
+                            icon: 'error',
+                            title: data.message || 'Failed to load order details'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'Failed to load order details'
+                    });
+                });
         }
 
         // Close Order Modal
@@ -699,7 +570,7 @@ $pageSubtitle = 'Track and manage customer orders';
             
             Swal.fire({
                 title: 'Update Order Status?',
-                text: `Mark order #VV-${orderId} as ${statusText}?`,
+                text: `Mark this order as ${statusText}?`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#3C91E6',
@@ -708,36 +579,62 @@ $pageSubtitle = 'Track and manage customer orders';
                 cancelButtonText: 'Cancel'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Here you would send the update to your backend
-                    
-                    Toast.fire({
-                        icon: 'success',
-                        title: `Order #VV-${orderId} marked as ${statusText}!`
+                    // Show loading
+                    Swal.fire({
+                        title: 'Updating...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Send update to backend
+                    const formData = new FormData();
+                    formData.append('action', 'update_status');
+                    formData.append('order_id', orderId);
+                    formData.append('new_status', newStatus);
+
+                    fetch('manageOrder.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        Swal.close();
+                        
+                        if (data.success) {
+                            Toast.fire({
+                                icon: 'success',
+                                title: data.message
+                            });
+                            
+                            // Reload page to refresh order list
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Update Failed',
+                                text: data.message
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        Swal.close();
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to update order status'
+                        });
                     });
                 }
             });
         }
 
-        // Cancel Order
+        // Cancel Order (using updateOrderStatus)
         function cancelOrder(orderId) {
-            Swal.fire({
-                title: 'Cancel Order?',
-                text: `Are you sure you want to cancel order #VV-${orderId}?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#EF4444',
-                cancelButtonColor: '#6B7280',
-                confirmButtonText: 'Yes, cancel it!',
-                cancelButtonText: 'Go Back'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Here you would send the cancellation to your backend
-                    
-                    Toast.fire({
-                        icon: 'success',
-                        title: `Order #VV-${orderId} cancelled successfully!`
-                    });
-                }
-            });
+            updateOrderStatus(orderId, 'cancelled');
         }
     </script>

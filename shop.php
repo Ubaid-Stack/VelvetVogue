@@ -1,3 +1,94 @@
+<?php 
+require_once './inc/db.php';
+
+// Pagination settings
+$products_per_page = 12;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $products_per_page;
+
+// Filter parameters
+$category_filter = isset($_GET['category']) ? $_GET['category'] : '';
+$price_max = isset($_GET['price']) ? intval($_GET['price']) : 10000;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// Build query
+$where_conditions = ["p.status = 'active'"];
+$params = [];
+$types = '';
+
+if (!empty($category_filter)) {
+    $where_conditions[] = "c.category_id = ?";
+    $params[] = $category_filter;
+    $types .= 'i';
+}
+
+if ($price_max < 10000) {
+    $where_conditions[] = "p.price <= ?";
+    $params[] = $price_max;
+    $types .= 'd';
+}
+
+if (!empty($search)) {
+    $where_conditions[] = "(p.product_name LIKE ? OR p.description LIKE ?)";
+    $search_param = "%{$search}%";
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $types .= 'ss';
+}
+
+$where_sql = implode(' AND ', $where_conditions);
+
+// Count total products
+$count_sql = "SELECT COUNT(DISTINCT p.product_id) as total 
+              FROM products p 
+              LEFT JOIN categories c ON p.category_id = c.category_id 
+              WHERE {$where_sql}";
+
+$count_stmt = $conn->prepare($count_sql);
+if (!empty($params)) {
+    $count_stmt->bind_param($types, ...$params);
+}
+$count_stmt->execute();
+$total_products = $count_stmt->get_result()->fetch_assoc()['total'];
+$count_stmt->close();
+
+$total_pages = ceil($total_products / $products_per_page);
+
+// Fetch products
+$sql = "SELECT p.*, c.category_name, 
+        pi.image_url,
+        COALESCE(AVG(r.rating), 0) as avg_rating,
+        COUNT(DISTINCT r.review_id) as review_count
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+        LEFT JOIN reviews r ON p.product_id = r.product_id AND r.is_approved = 1
+        WHERE {$where_sql}
+        GROUP BY p.product_id
+        ORDER BY p.created_at DESC
+        LIMIT ? OFFSET ?";
+
+$stmt = $conn->prepare($sql);
+$params[] = $products_per_page;
+$params[] = $offset;
+$types .= 'ii';
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$products_result = $stmt->get_result();
+$products = [];
+while ($row = $products_result->fetch_assoc()) {
+    $products[] = $row;
+}
+$stmt->close();
+
+// Fetch categories for filter
+$categories_sql = "SELECT category_id, category_name FROM categories WHERE is_active = 1 ORDER BY category_name";
+$categories_result = $conn->query($categories_sql);
+$categories = [];
+while ($cat = $categories_result->fetch_assoc()) {
+    $categories[] = $cat;
+}
+?>
 <?php include './inc/header.php'; ?>
     
     <!-- Shop page content outside body-con wrapper -->
@@ -17,12 +108,12 @@
             <div class="filter-group">
                 <label for="category">Category</label>
                 <select id="category" name="category">
-                    <option value="women">Women's Wear</option>
-                    <option value="men">Men's Wear</option>
-                    <option value="formal-wear">Formal Wear</option>
-                    <option value="casual-wear">Casual Wear</option>
-                    <option value="accessories">Accessories</option>
-                    <option value="new-arrivals">New Arrivals</option>
+                    <option value="">All Categories</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?php echo $cat['category_id']; ?>" <?php echo ($category_filter == $cat['category_id']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($cat['category_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <!-- this is size dropdown -->
@@ -52,8 +143,8 @@
             <!-- this is price range dropdown -->
             <div class="filter-group">
                 <label for="priceRange">Price Range</label>
-                <input type="range" name="priceRange" id="priceRange" min="0" max="500" step="10">
-                <span id="priceValue">$0 - $500</span>
+                <input type="range" name="priceRange" id="priceRange" min="0" max="1000" step="10" value="<?php echo $price_max >= 10000 ? 1000 : $price_max; ?>">
+                <span id="priceValue">$0 - $<?php echo $price_max >= 10000 ? 1000 : $price_max; ?></span>
             </div>
             <div class="filter-action-btn">
                 <button class="apply-filter-btn">Apply Filters</button>
@@ -62,108 +153,85 @@
         </div>
     </section>
     <section class="product-result-con">
-        <span class="showing-result">showing 12 products</span>
+        <span class="showing-result">Showing <?php echo count($products); ?> of <?php echo $total_products; ?> products</span>
         <div class="products">
             <!-- Products will be dynamically loaded here -->
-             <div class="product-cart">
-                <!-- Product cards -->
-                <div class="like">
-                <i class='bx  bx-heart'></i> 
+            <?php if (empty($products)): ?>
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">
+                    <i class='bx bx-shopping-bag' style="font-size: 48px;"></i>
+                    <p style="margin-top: 16px; font-size: 18px;">No products found</p>
+                    <p style="margin-top: 8px;">Try adjusting your filters</p>
                 </div>
-                <a href="product.php" class="product-link">
-                    <picture>
-                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    </picture>
-                    <p class="product-name">T-Shirt</p>
-                    <div class="stars">
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <span>(4.8)</span>
-                  </div>
-                  <span class="product-price">$19.99</span>
-                </a>
-                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-            </div>
-             <div class="product-cart">
-                <!-- Product cards -->
-                <div class="like">
-                <i class='bx  bx-heart'></i> 
+            <?php else: ?>
+                <?php foreach ($products as $product): 
+                    // Handle image path correctly
+                    $image_path = './images/hero-img.png'; // Default fallback
+                    if (!empty($product['image_url'])) {
+                        // If path starts with ../ (from admin), convert to ./
+                        if (strpos($product['image_url'], '../images/') === 0) {
+                            $image_path = str_replace('../images/', './images/', $product['image_url']);
+                        } else {
+                            $image_path = $product['image_url'];
+                        }
+                    }
+                    
+                    $rating = round($product['avg_rating'], 1);
+                    $full_stars = floor($rating);
+                    $has_half = ($rating - $full_stars) >= 0.5;
+                    $empty_stars = 5 - $full_stars - ($has_half ? 1 : 0);
+                    $display_price = $product['discount_percentage'] > 0 ? $product['price'] : $product['original_price'];
+                ?>
+                <div class="product-cart">
+                    <div class="like" data-product-id="<?php echo $product['product_id']; ?>" style="cursor: pointer;">
+                        <i class='bx bx-heart'></i> 
+                    </div>
+                    <a href="product.php?id=<?php echo $product['product_id']; ?>" class="product-link">
+                        <picture>
+                            <img src="<?php echo htmlspecialchars($image_path); ?>" alt="<?php echo htmlspecialchars($product['product_name']); ?>" class="trending-image" loading="lazy">
+                        </picture>
+                        <p class="product-name"><?php echo htmlspecialchars($product['product_name']); ?></p>
+                        <div class="stars">
+                            <?php for ($i = 0; $i < $full_stars; $i++): ?>
+                                <i class='bx bxs-star'></i>
+                            <?php endfor; ?>
+                            <?php if ($has_half): ?>
+                                <i class='bx bxs-star-half'></i>
+                            <?php endif; ?>
+                            <?php for ($i = 0; $i < $empty_stars; $i++): ?>
+                                <i class='bx bx-star'></i>
+                            <?php endfor; ?>
+                            <span>(<?php echo $rating; ?>)</span>
+                        </div>
+                        <span class="product-price">$<?php echo number_format($display_price, 2); ?></span>
+                    </a>
+                    <button class="addToCartBtn" data-product-id="<?php echo $product['product_id']; ?>"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
                 </div>
-                <a href="product.php" class="product-link">
-                    <picture>
-                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    </picture>
-                    <p class="product-name">T-Shirt</p>
-                    <div class="stars">
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bxs-star'></i>
-                        <span>(4.8)</span>
-                  </div>
-                  <span class="product-price">$19.99</span>
-                </a>
-                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-            </div>
-             <div class="product-cart">
-                <!-- Product cards -->
-                <div class="like">
-                <i class='bx  bx-heart'></i> 
-                </div>
-                <a href="product.php" class="product-link">
-                    <picture>
-                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    </picture>
-                    <p class="product-name">T-Shirt</p>
-                    <div class="stars">
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <span>(4.8)</span>
-                  </div>
-                  <span class="product-price">$19.99</span>
-                </a>
-                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-            </div>
-             <div class="product-cart">
-                <!-- Product cards -->
-                <div class="like">
-                <i class='bx  bx-heart'></i> 
-                </div>
-                <a href="product.php" class="product-link">
-                    <picture>
-                        <img src="./images/womensWear.webp" alt="Trending Product 2" class="trending-image" loading="lazy">
-                    </picture>
-                    <p class="product-name">T-Shirt</p>
-                    <div class="stars">
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <i class='bx bxs-star'></i>
-                        <span>(4.8)</span>
-                  </div>
-                  <span class="product-price">$19.99</span>
-                </a>
-                <button class="addToCartBtn"><i class='bx bxs-shopping-bag-alt'></i>Add to Cart</button>
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </section>
+    <?php if ($total_pages > 1): ?>
     <section class="pagination-con">
         <div class="pagination">
-            <a href="#" class="prev-page"><i class='bx bx-chevron-left'></i> Previous</a>
-            <a href="#" class="page-number active">1</a>
-            <a href="#" class="page-number">2</a>
-            <a href="#" class="page-number">3</a>
-            <a href="#" class="next-page">Next <i class='bx bx-chevron-right'></i></a>
+            <?php if ($page > 1): ?>
+                <a href="?page=<?php echo $page - 1; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?>" class="prev-page"><i class='bx bx-chevron-left'></i> Previous</a>
+            <?php endif; ?>
+            
+            <?php 
+            $start_page = max(1, $page - 2);
+            $end_page = min($total_pages, $page + 2);
+            
+            for ($i = $start_page; $i <= $end_page; $i++): 
+            ?>
+                <a href="?page=<?php echo $i; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?>" class="page-number <?php echo $i == $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
+            <?php endfor; ?>
+            
+            <?php if ($page < $total_pages): ?>
+                <a href="?page=<?php echo $page + 1; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?>" class="next-page">Next <i class='bx bx-chevron-right'></i></a>
+            <?php endif; ?>
         </div>
     </section>
+    <?php endif; ?>
     </main>
 
     <script>
@@ -201,31 +269,163 @@
 
         // Clear filters
         document.querySelector('.clear-filter-btn').addEventListener('click', () => {
-            document.getElementById('category').selectedIndex = 0;
-            document.getElementById('size').selectedIndex = 0;
-            document.getElementById('color').selectedIndex = 0;
-            priceRange.value = 500;
-            priceValue.textContent = '$0 - $500';
-            priceRange.style.background = `linear-gradient(to right, var(--primary-btn) 0%, var(--primary-btn) 100%, var(--border-color) 100%, var(--border-color) 100%)`;
+            window.location.href = 'shop.php';
         });
 
-        // Apply filters (placeholder - add your filtering logic)
+        // Apply filters
         document.querySelector('.apply-filter-btn').addEventListener('click', () => {
-            console.log('Filters applied');
-            closeFilter();
+            const category = document.getElementById('category').value;
+            const price = document.getElementById('priceRange').value;
+            
+            let url = 'shop.php?';
+            const params = [];
+            
+            if (category) {
+                params.push('category=' + category);
+            }
+            if (price < 1000) {
+                params.push('price=' + price);
+            }
+            
+            url += params.join('&');
+            window.location.href = url;
         });
 
         // Add to Cart with SweetAlert2
         document.querySelectorAll('.addToCartBtn').forEach(button => {
-            button.addEventListener('click', function() {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Added to Cart!',
-                    text: 'Product has been added to your cart',
-                    showConfirmButton: false,
-                    timer: 1500,
-                    toast: true,
-                    position: 'top-end'
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const productId = this.getAttribute('data-product-id');
+                
+                // Send AJAX request to add to cart
+                fetch('add_to_cart.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'product_id=' + productId + '&quantity=1'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: data.message,
+                            showConfirmButton: false,
+                            timer: 1500,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                    } else if (data.login_required) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Login Required',
+                            text: 'Please login to add items to cart',
+                            showCancelButton: true,
+                            confirmButtonText: 'Login',
+                            cancelButtonText: 'Cancel'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = 'login.php';
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message,
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Something went wrong. Please try again.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                });
+            });
+        });
+
+        // Add to Wishlist functionality
+        document.querySelectorAll('.like').forEach(likeBtn => {
+            likeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const productId = this.getAttribute('data-product-id');
+                const icon = this.querySelector('i');
+                
+                // Send AJAX request to add to wishlist
+                fetch('add_to_wishlist.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'product_id=' + productId
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Toggle heart icon
+                        icon.classList.toggle('bx-heart');
+                        icon.classList.toggle('bxs-heart');
+                        icon.style.color = icon.classList.contains('bxs-heart') ? '#ef4444' : '';
+                        
+                        Swal.fire({
+                            icon: 'success',
+                            title: data.message,
+                            showConfirmButton: false,
+                            timer: 1500,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                    } else if (data.login_required) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Login Required',
+                            text: 'Please login to add items to wishlist',
+                            showCancelButton: true,
+                            confirmButtonText: 'Login',
+                            cancelButtonText: 'Cancel'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = 'login.php';
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message,
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Something went wrong. Please try again.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
                 });
             });
         });

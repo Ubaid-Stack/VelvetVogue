@@ -149,34 +149,71 @@ include './inc/header.php';
                 </div>
             </div>
             <div class="payment-method">
-                <h2 class="title"><i class='bx  bx-credit-card-front'></i> Payment Method</h2>
+                <h2 class="title"><i class='bx bx-credit-card-front'></i> Payment Method</h2>
                 <div class="payment-option">
-                    <input type="radio" id="creditCard" name="paymentMethod" value="creditCard" checked>
+                    <input type="radio" id="creditCard" name="paymentMethod" value="credit_card" checked>
                     <label for="creditCard">
-                        <span class="method-name">Credit/Debit Card</span>
+                        <span class="method-name">💳 Credit/Debit Card</span>
                         <span class="method-details">We accept Visa, MasterCard, American Express, and Discover.</span>
                     </label>
                 </div>
                 <div class="payment-option">
                     <input type="radio" id="paypal" name="paymentMethod" value="paypal">
                     <label for="paypal">
-                        <span class="method-name">PayPal</span>
+                        <span class="method-name"><i class='bx bxl-paypal' style="font-size: 18px; vertical-align: middle;"></i> PayPal</span>
                         <span class="method-details">Secure payment through your PayPal account.</span>
                     </label>
                 </div>
-                <label for="cardNumber">Card Number:</label>
-                <input type="text" id="cardNumber" name="cardNumber" placeholder="Enter your card number" required>
+                
+                <!-- Credit Card Fields -->
+                <div id="creditCardFields">
+                    <div>
+                        <label for="cardNumber">Card Number</label>
+                        <input type="text" id="cardNumber" name="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+                        <!-- <div class="card-brands" style="margin-top: 8px;">
+                            <span style="font-size: 11px; color: #6c757d;">We accept:</span>
+                            <span style="font-size: 18px;">💳</span>
+                            <span style="font-size: 11px; color: #1a1f71; font-weight: 600;">VISA</span>
+                            <span style="font-size: 11px; color: #eb001b; font-weight: 600;">MC</span>
+                            <span style="font-size: 11px; color: #006fcf; font-weight: 600;">AMEX</span>
+                            <span style="font-size: 11px; color: #ff6000; font-weight: 600;">DISC</span>
+                        </div> -->
+                    </div>
 
-                <label for="nameOnCard">Name on Card:</label>
-                <input type="text" id="nameOnCard" name="nameOnCard" placeholder="Enter the name on your card" required>
+                    <div>
+                        <label for="nameOnCard">Name on Card</label>
+                        <input type="text" id="nameOnCard" name="nameOnCard" placeholder="Ubaidullah">
+                    </div>
 
-                <label for="expiryDate">Expiry Date:</label>
-                <input type="text" id="expiryDate" name="expiryDate" placeholder="MM/YY" required>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label for="expiryDate">Expiry Date</label>
+                            <input type="text" id="expiryDate" name="expiryDate" placeholder="MM/YY" maxlength="5">
+                        </div>
+                        <div>
+                            <label for="cvv">CVV</label>
+                            <input type="text" id="cvv" name="cvv" placeholder="123" maxlength="4">
+                            <span style="font-size: 11px; color: #6c757d; margin-top: 4px; display: block;">3-4 digits on back</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PayPal Fields -->
+                <div id="paypalFields" style="display: none;">
+                    <div>
+                        <label for="paypalEmail">PayPal Email Address</label>
+                        <input type="email" id="paypalEmail" name="paypalEmail" placeholder="your-email@example.com">
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%); padding: 16px; border-radius: 12px; margin-top: 12px; border-left: 4px solid #0070ba; box-shadow: 0 2px 8px rgba(0, 112, 186, 0.1);">
+                        <p style="margin: 0; font-size: 14px; color: #495057; line-height: 1.6; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class='bx bxl-paypal' style="color: #0070ba; font-size: 24px; margin-top: 2px;"></i>
+                            <span>After clicking "Continue to Review", you'll be able to complete your payment securely through PayPal on the next page.</span>
+                        </p>
+                    </div>
+                </div>
 
-                <label for="cvv">CVV:</label>
-                <input type="text" id="cvv" name="cvv" placeholder="Enter CVV" required>
-
-                <a href="finalReview.php"><button type="submit" class="continue-btn">Continue to Review</button></a>
+                <button type="button" class="continue-btn" id="continueBtn">Continue to Review</button>
 
             </div>
         </div>
@@ -260,6 +297,159 @@ include './inc/header.php';
                 
                 document.getElementById('shipping-cost').textContent = shippingCost === 0 ? 'Free' : '$' + shippingCost.toFixed(2);
                 document.getElementById('order-total').textContent = '$' + total.toFixed(2);
+            });
+        });
+        
+        // Toggle payment method fields
+        const creditCardFields = document.getElementById('creditCardFields');
+        const paypalFields = document.getElementById('paypalFields');
+        const paymentMethodRadios = document.querySelectorAll('input[name="paymentMethod"]');
+        
+        paymentMethodRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'credit_card') {
+                    creditCardFields.style.display = 'block';
+                    paypalFields.style.display = 'none';
+                    
+                    // Set required for credit card fields
+                    document.getElementById('cardNumber').required = true;
+                    document.getElementById('nameOnCard').required = true;
+                    document.getElementById('expiryDate').required = true;
+                    document.getElementById('cvv').required = true;
+                    document.getElementById('paypalEmail').required = false;
+                } else if (this.value === 'paypal') {
+                    creditCardFields.style.display = 'none';
+                    paypalFields.style.display = 'block';
+                    
+                    // Set required for PayPal fields
+                    document.getElementById('cardNumber').required = false;
+                    document.getElementById('nameOnCard').required = false;
+                    document.getElementById('expiryDate').required = false;
+                    document.getElementById('cvv').required = false;
+                    document.getElementById('paypalEmail').required = true;
+                }
+            });
+        });
+        
+        // Format card number with spaces
+        document.getElementById('cardNumber').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+        });
+        
+        // Format expiry date
+        document.getElementById('expiryDate').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.slice(0, 2) + '/' + value.slice(2, 4);
+            }
+            e.target.value = value;
+        });
+        
+        // Continue to Review button
+        document.getElementById('continueBtn').addEventListener('click', function() {
+            // Validate all required fields
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const city = document.getElementById('city').value.trim();
+            const state = document.getElementById('state').value.trim();
+            const zip = document.getElementById('zip').value.trim();
+            const shippingMethod = document.querySelector('input[name="shippingMethod"]:checked').value;
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+            
+            if (!email || !phone || !firstName || !lastName || !address || !city || !state || !zip) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Missing Information',
+                    text: 'Please fill in all required fields',
+                    confirmButtonColor: '#3C91E6'
+                });
+                return;
+            }
+            
+            // Validate payment fields based on selected method
+            if (paymentMethod === 'credit_card') {
+                const cardNumber = document.getElementById('cardNumber').value.trim();
+                const nameOnCard = document.getElementById('nameOnCard').value.trim();
+                const expiryDate = document.getElementById('expiryDate').value.trim();
+                const cvv = document.getElementById('cvv').value.trim();
+                
+                if (!cardNumber || !nameOnCard || !expiryDate || !cvv) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Missing Payment Information',
+                        text: 'Please fill in all credit card details',
+                        confirmButtonColor: '#3C91E6'
+                    });
+                    return;
+                }
+            } else if (paymentMethod === 'paypal') {
+                const paypalEmail = document.getElementById('paypalEmail').value.trim();
+                
+                if (!paypalEmail) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Missing PayPal Email',
+                        text: 'Please enter your PayPal email address',
+                        confirmButtonColor: '#3C91E6'
+                    });
+                    return;
+                }
+            }
+            
+            // Save data to session via AJAX
+            const formData = new FormData();
+            formData.append('save_checkout_data', '1');
+            formData.append('email', email);
+            formData.append('phone', phone);
+            formData.append('firstName', firstName);
+            formData.append('lastName', lastName);
+            formData.append('address', address);
+            formData.append('apartment', document.getElementById('apartment').value.trim());
+            formData.append('city', city);
+            formData.append('state', state);
+            formData.append('zip', zip);
+            formData.append('shippingMethod', shippingMethod);
+            formData.append('paymentMethod', paymentMethod);
+            
+            if (paymentMethod === 'credit_card') {
+                formData.append('cardNumber', document.getElementById('cardNumber').value.trim());
+                formData.append('nameOnCard', document.getElementById('nameOnCard').value.trim());
+                formData.append('expiryDate', document.getElementById('expiryDate').value.trim());
+                formData.append('cvv', document.getElementById('cvv').value.trim());
+            } else if (paymentMethod === 'paypal') {
+                formData.append('paypalEmail', document.getElementById('paypalEmail').value.trim());
+            }
+            
+            fetch('save_checkout_session.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = 'finalReview.php';
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Failed to save checkout data',
+                        confirmButtonColor: '#EF4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred. Please try again.',
+                    confirmButtonColor: '#EF4444'
+                });
             });
         });
     </script>

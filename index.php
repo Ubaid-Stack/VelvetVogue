@@ -16,7 +16,7 @@
           <h2 class="section-title">Shop by Category</h2>
           <div class="categories-container ">
             <div class="category-card">
-              <img src="./images/mensWear.webp" alt="Men's Wear" class="category-image" loading="lazy">
+              <img src="./images/Best-British-Menswear-Brands.webp" alt="Men's Wear" class="category-image" loading="lazy">
               <div class="navBtn">
                 <h3 class="category-title">Men's Wear</h3>
                 <button class="exploreBtn">Explore <i class='bx bx-chevron-right'></i></button>
@@ -30,7 +30,7 @@
               </div>
             </div>
             <div class="category-card">
-              <img src="./images/formal.jpg" alt="Formal Wear" class="category-image" loading="lazy">
+              <img src="./images/formal-attire-top-2-604x270.webp" alt="Formal Wear" class="category-image" loading="lazy">
               <div class="navBtn">
                 <h3 class="category-title">Formal Wear</h3>
                 <button class="exploreBtn">Explore <i class='bx bx-chevron-right'></i></button>

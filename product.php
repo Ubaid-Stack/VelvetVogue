@@ -129,7 +129,48 @@ if ($display_original_price > $current_price) {
 
 // Check stock availability
 $total_stock = array_sum(array_column($variants, 'stock_quantity'));
+// Fallback to product stock_quantity when no variants exist
+if (empty($variants)) {
+    $total_stock = (int)($product['stock_quantity'] ?? 0);
+}
 $is_in_stock = $total_stock > 0;
+
+// Fetch related products (same category, exclude current, limit 4)
+$relatedProducts = [];
+$relatedQuery = "SELECT p.product_id, p.product_name, p.price, p.original_price, c.category_name, pi.image_url
+                 FROM products p
+                 LEFT JOIN categories c ON p.category_id = c.category_id
+                 LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+                 WHERE p.category_id = ? AND p.product_id != ? AND p.status = 'active'
+                 GROUP BY p.product_id
+                 ORDER BY p.created_at DESC
+                 LIMIT 4";
+
+try {
+    $relatedStmt = $conn->prepare($relatedQuery);
+    $relatedStmt->bind_param("ii", $product['category_id'], $product_id);
+    $relatedStmt->execute();
+    $relatedResult = $relatedStmt->get_result();
+    while ($row = $relatedResult->fetch_assoc()) {
+        // Fix image path for frontend
+        if (!empty($row['image_url'])) {
+            $row['image_url'] = str_replace('../images/', './images/', $row['image_url']);
+        } else {
+            $row['image_url'] = './images/product1.jpg';
+        }
+        // Calculate badge
+        $row['display_original_price'] = $row['original_price'] ?? $row['price'];
+        $row['discount_percent'] = 0;
+        if ($row['display_original_price'] > $row['price']) {
+            $row['discount_percent'] = round((($row['display_original_price'] - $row['price']) / $row['display_original_price']) * 100);
+        }
+        $relatedProducts[] = $row;
+    }
+    $relatedStmt->close();
+} catch (Exception $e) {
+    // If related query fails, leave section empty
+    $relatedProducts = [];
+}
 ?>
     
     <section class="product-detail-con">
@@ -428,7 +469,7 @@ $is_in_stock = $total_stock > 0;
                                     }
                                 ?></span>
                             </div>
-                            <p class="review-text"><?php echo nl2br(htmlspecialchars($review['comment'])); ?></p>
+                            <p class="review-text"><?php echo nl2br(htmlspecialchars($review['review_text'] ?? '')); ?></p>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -438,86 +479,31 @@ $is_in_stock = $total_stock > 0;
         </div>
 
         <!-- You May Also Like Section -->
+        <?php if (!empty($relatedProducts)): ?>
         <div class="related-products-section">
             <h2 class="section-title">You May Also Like</h2>
             <div class="related-products-grid">
+                <?php foreach ($relatedProducts as $rel): ?>
                 <div class="related-product-card">
-                    <div class="product-badge sale">SALE</div>
+                    <?php if ($rel['discount_percent'] > 0): ?>
+                        <div class="product-badge sale">SALE</div>
+                    <?php endif; ?>
                     <button class="wishlist-icon"><i class='bx bx-heart'></i></button>
-                    <a href="product.php">
-                        <img src="./images/product2.jpg" alt="Denim Jacket">
-                        <h3>Classic Denim Jacket</h3>
-                        <div class="stars">
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                        </div>
+                    <a href="product.php?id=<?php echo $rel['product_id']; ?>">
+                        <img src="<?php echo htmlspecialchars($rel['image_url']); ?>" alt="<?php echo htmlspecialchars($rel['product_name']); ?>">
+                        <h3><?php echo htmlspecialchars($rel['product_name']); ?></h3>
                         <div class="product-price-info">
-                            <span class="current-price">$89.99</span>
-                            <span class="old-price">$120.00</span>
+                            <span class="current-price">$<?php echo number_format($rel['price'], 2); ?></span>
+                            <?php if ($rel['discount_percent'] > 0): ?>
+                                <span class="old-price">$<?php echo number_format($rel['display_original_price'], 2); ?></span>
+                            <?php endif; ?>
                         </div>
                     </a>
                 </div>
-
-                <div class="related-product-card">
-                    <button class="wishlist-icon"><i class='bx bx-heart'></i></button>
-                    <a href="product.php">
-                        <img src="./images/product3.jpg" alt="Silk Blouse">
-                        <h3>Silk Summer Blouse</h3>
-                        <div class="stars">
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star empty'></i>
-                        </div>
-                        <div class="product-price-info">
-                            <span class="current-price">$65.00</span>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="related-product-card">
-                    <button class="wishlist-icon"><i class='bx bx-heart'></i></button>
-                    <a href="product.php">
-                        <img src="./images/product4.jpg" alt="Formal Blazer">
-                        <h3>Tailored Formal Blazer</h3>
-                        <div class="stars">
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                        </div>
-                        <div class="product-price-info">
-                            <span class="current-price">$145.00</span>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="related-product-card">
-                    <div class="product-badge sale">SALE</div>
-                    <button class="wishlist-icon"><i class='bx bx-heart'></i></button>
-                    <a href="product.php">
-                        <img src="./images/product1.jpg" alt="Original T-Shirt">
-                        <h3>Original Graphic Tee</h3>
-                        <div class="stars">
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star'></i>
-                            <i class='bx bxs-star empty'></i>
-                        </div>
-                        <div class="product-price-info">
-                            <span class="current-price">$29.99</span>
-                            <span class="old-price">$45.00</span>
-                        </div>
-                    </a>
-                </div>
+                <?php endforeach; ?>
             </div>
         </div>
+        <?php endif; ?>
     </section>
 </main>
     <script>

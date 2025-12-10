@@ -1662,12 +1662,17 @@ body {
 
 /* Order Status Badges */
 .order-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 6px 14px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     white-space: nowrap;
+    width: fit-content;
+    max-width: 100%;
 }
 
 .order-status-badge.pending {
@@ -2157,6 +2162,106 @@ body {
 .btn-profile-edit i,
 .btn-change-password i {
     font-size: 20px;
+}
+
+/* Change Password Modal */
+.password-modal {
+    max-width: 640px;
+}
+
+.password-modal .modal-header {
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.modal-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.modal-title-group .eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.modal-title-group h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.modal-title-group .subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.input-with-icon {
+    position: relative;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 18px;
+}
+
+.input-with-icon input {
+    width: 100%;
+    padding: 12px 14px 12px 42px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 15px;
+    color: var(--text-primary);
+    background-color: #FFFFFF;
+    transition: all 0.3s ease;
+}
+
+.input-with-icon input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(60, 145, 230, 0.12);
+}
+
+.password-modal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.password-modal .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 4px;
+}
+
+.password-modal .form-group {
+    margin-bottom: 8px;
+}
+
+.password-modal .modal-body .form-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.modal-footer-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.password-modal .btn-primary i {
+    font-size: 18px;
 }
 
 /* Profile Details Card */

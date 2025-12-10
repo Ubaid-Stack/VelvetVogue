@@ -6,9 +6,10 @@ $pageSubtitle = 'Add, edit, and organize your product catalog';
 
 <?php include './inc/sidbar.php'; ?>
     
-<?php include './inc/topbar.php'; ?>
-<?php include '../inc/db.php';
+<?php include '../inc/db.php'; ?>
 
+<?php include './inc/topbar.php'; ?>
+<?php  
 // Handle Add Product
 if (isset($_POST['add_product'])) {
     $product_name = $conn->real_escape_string($_POST['product_name']);

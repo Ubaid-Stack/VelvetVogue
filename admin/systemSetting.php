@@ -6,6 +6,8 @@ $pageSubtitle = 'Configure your store settings and preferences';
 
 <?php include './inc/sidbar.php'; ?>
     
+<?php include '../inc/db.php'; ?>
+
 <?php include './inc/topbar.php'; ?>
 
         <!-- Settings Section -->

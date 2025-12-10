@@ -1,4 +1,164 @@
 <?php 
+session_start();
+require_once '../inc/db.php';
+
+// Check if admin is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
+    header('Location: adminLogin.php');
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Helper: log admin activity (safe if activity_log table exists)
+function logActivity($conn, $userId, $action) {
+    try {
+        $stmt = $conn->prepare("INSERT INTO activity_log (user_id, action) VALUES (?, ?)");
+        $stmt->bind_param("is", $userId, $action);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Exception $e) {
+        // Silently ignore if logging fails
+    }
+}
+
+// Handle Profile Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+    $full_name = $conn->real_escape_string($_POST['full_name']);
+    $email = $conn->real_escape_string($_POST['email']);
+    $phone = $conn->real_escape_string($_POST['phone']);
+    
+    // Handle profile photo upload
+    $profile_image = null;
+    if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === 0) {
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        $filename = $_FILES['profile_photo']['name'];
+        $filetype = pathinfo($filename, PATHINFO_EXTENSION);
+        $filesize = $_FILES['profile_photo']['size'];
+        
+        if (!in_array(strtolower($filetype), $allowed)) {
+            $_SESSION['error'] = 'Only JPG, JPEG, PNG & GIF files are allowed';
+        } elseif ($filesize > 2 * 1024 * 1024) {
+            $_SESSION['error'] = 'File size must be less than 2MB';
+        } else {
+            $upload_dir = '../images/profiles/';
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            
+            $new_filename = 'admin_' . $user_id . '_' . time() . '.' . $filetype;
+            $upload_path = $upload_dir . $new_filename;
+            
+            if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $upload_path)) {
+                $profile_image = './images/profiles/' . $new_filename;
+            }
+        }
+    }
+    
+    // Update user profile
+    if ($profile_image) {
+        $updateQuery = "UPDATE users SET full_name = ?, email = ?, phone = ?, profile_image = ? WHERE user_id = ?";
+        $updateStmt = $conn->prepare($updateQuery);
+        $updateStmt->bind_param("ssssi", $full_name, $email, $phone, $profile_image, $user_id);
+    } else {
+        $updateQuery = "UPDATE users SET full_name = ?, email = ?, phone = ? WHERE user_id = ?";
+        $updateStmt = $conn->prepare($updateQuery);
+        $updateStmt->bind_param("sssi", $full_name, $email, $phone, $user_id);
+    }
+    
+    if ($updateStmt->execute()) {
+        $_SESSION['success'] = 'Profile updated successfully!';
+        logActivity($conn, $user_id, 'Updated profile information');
+    } else {
+        $_SESSION['error'] = 'Failed to update profile';
+    }
+    $updateStmt->close();
+    
+    header('Location: adminProfile.php');
+    exit();
+}
+
+// Handle Password Change
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
+    $current_password = $_POST['current_password'];
+    $new_password = $_POST['new_password'];
+    $confirm_password = $_POST['confirm_password'];
+    
+    // Fetch current password hash
+    $passQuery = "SELECT password FROM users WHERE user_id = ?";
+    $passStmt = $conn->prepare($passQuery);
+    $passStmt->bind_param("i", $user_id);
+    $passStmt->execute();
+    $passResult = $passStmt->get_result();
+    $userData = $passResult->fetch_assoc();
+    $passStmt->close();
+    
+    if (!password_verify($current_password, $userData['password'])) {
+        echo json_encode(['success' => false, 'message' => 'Current password is incorrect']);
+        exit();
+    }
+    
+    if (strlen($new_password) < 8) {
+        echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters']);
+        exit();
+    }
+    
+    if ($new_password !== $confirm_password) {
+        echo json_encode(['success' => false, 'message' => 'Passwords do not match']);
+        exit();
+    }
+    
+    $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+    $updatePassQuery = "UPDATE users SET password = ? WHERE user_id = ?";
+    $updatePassStmt = $conn->prepare($updatePassQuery);
+    $updatePassStmt->bind_param("si", $hashed_password, $user_id);
+    
+    if ($updatePassStmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Password changed successfully!']);
+        logActivity($conn, $user_id, 'Changed account password');
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to change password']);
+    }
+    $updatePassStmt->close();
+    exit();
+}
+
+// Fetch admin profile data
+$profileQuery = "SELECT full_name, username, email, phone, profile_image, user_type, created_at, last_login FROM users WHERE user_id = ?";
+$profileStmt = $conn->prepare($profileQuery);
+$profileStmt->bind_param("i", $user_id);
+$profileStmt->execute();
+$profileResult = $profileStmt->get_result();
+$adminProfile = $profileResult->fetch_assoc();
+$profileStmt->close();
+
+// Fetch recent activity (last 5) — gracefully handle missing table
+$activities = [];
+try {
+    $activityQuery = "SELECT action, created_at FROM activity_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 5";
+    $activityStmt = $conn->prepare($activityQuery);
+    $activityStmt->bind_param("i", $user_id);
+    $activityStmt->execute();
+    $activityResult = $activityStmt->get_result();
+    $activities = $activityResult->fetch_all(MYSQLI_ASSOC);
+    $activityStmt->close();
+} catch (Exception $e) {
+    // If table doesn't exist, just show the fallback activity below.
+    $activities = [];
+}
+
+// Split full name
+$name_parts = explode(' ', $adminProfile['full_name'], 2);
+$first_name = $name_parts[0] ?? '';
+$last_name = $name_parts[1] ?? '';
+
+// Get initials
+if (count($name_parts) >= 2) {
+    $initials = strtoupper(substr($name_parts[0], 0, 1) . substr($name_parts[1], 0, 1));
+} else {
+    $initials = strtoupper(substr($adminProfile['full_name'], 0, 2));
+}
+
 $pageTitle = 'Admin Profile';
 $pageSubtitle = 'Manage your account settings';
 ?>
@@ -11,16 +171,53 @@ $pageSubtitle = 'Manage your account settings';
         <!-- Profile Section -->
         <section class="profile-section">
             
+            <?php if (isset($_SESSION['success'])): ?>
+                <script>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: '<?php echo $_SESSION['success']; ?>',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                </script>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+            
+            <?php if (isset($_SESSION['error'])): ?>
+                <script>
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: '<?php echo $_SESSION['error']; ?>',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                </script>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
+            
             <!-- Profile Header Card -->
             <div class="profile-header-card">
                 <div class="profile-avatar-large">
-                    <span class="avatar-text">SA</span>
+                    <?php if (!empty($adminProfile['profile_image'])): 
+                        // Fix image path for admin folder
+                        $image_path = str_replace('./images/', '../images/', $adminProfile['profile_image']);
+                    ?>
+                        <img src="<?php echo htmlspecialchars($image_path); ?>" alt="Profile Photo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    <?php else: ?>
+                        <span class="avatar-text"><?php echo $initials; ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="profile-header-info">
-                    <h2 class="profile-name">Sarah Anderson</h2>
-                    <p class="profile-email">sarah.anderson@velvetvogue.com</p>
-                    <span class="role-badge">Super Admin</span>
-                    <p class="last-login">Last login: Jan 15, 2024 at 2:30 PM</p>
+                    <h2 class="profile-name"><?php echo htmlspecialchars($adminProfile['full_name']); ?></h2>
+                    <p class="profile-email"><?php echo htmlspecialchars($adminProfile['email']); ?></p>
+                    <span class="role-badge"><?php echo ucfirst($adminProfile['user_type']); ?></span>
+                    <p class="last-login">Member since: <?php echo date('M d, Y', strtotime($adminProfile['created_at'])); ?></p>
                 </div>
                 <div class="profile-header-actions">
                     <button class="btn-profile-edit" id="editProfileBtn">
@@ -38,41 +235,30 @@ $pageSubtitle = 'Manage your account settings';
             <div class="profile-details-card">
                 <h3 class="card-title">Profile Details</h3>
                 
-                <form id="profileForm">
+                <form id="profileForm" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="update_profile" value="1">
+                    
                     <div class="form-row two-col">
                         <div class="form-group">
                             <label for="firstName">First Name</label>
-                            <input type="text" id="firstName" value="Sarah" readonly>
+                            <input type="text" id="firstName" name="first_name" value="<?php echo htmlspecialchars($first_name); ?>" readonly required>
                         </div>
                         <div class="form-group">
                             <label for="lastName">Last Name</label>
-                            <input type="text" id="lastName" value="Anderson" readonly>
+                            <input type="text" id="lastName" name="last_name" value="<?php echo htmlspecialchars($last_name); ?>" readonly required>
                         </div>
                     </div>
+                    
+                    <input type="hidden" id="fullName" name="full_name" value="<?php echo htmlspecialchars($adminProfile['full_name']); ?>">
 
                     <div class="form-row two-col">
                         <div class="form-group">
                             <label for="email">Email</label>
-                            <input type="email" id="email" value="sarah.anderson@velvetvogue.com" readonly>
+                            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($adminProfile['email']); ?>" readonly required>
                         </div>
                         <div class="form-group">
-                            <label for="mobileNumber">Mobile Number</label>
-                            <input type="tel" id="mobileNumber" value="+1 (555) 123-4567" readonly>
-                        </div>
-                    </div>
-
-                    <div class="form-row two-col">
-                        <div class="form-group">
-                            <label for="dateOfBirth">Date of Birth</label>
-                            <input type="date" id="dateOfBirth" value="1990-05-15" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label for="gender">Gender</label>
-                            <select id="gender" disabled>
-                                <option value="female" selected>Female</option>
-                                <option value="male">Male</option>
-                                <option value="other">Other</option>
-                            </select>
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" value="<?php echo htmlspecialchars($adminProfile['phone'] ?? ''); ?>" readonly>
                         </div>
                     </div>
 
@@ -80,7 +266,7 @@ $pageSubtitle = 'Manage your account settings';
                         <div class="form-group">
                             <label for="profilePhoto">Profile Photo</label>
                             <div class="file-upload">
-                                <input type="file" id="profilePhoto" accept="image/*" disabled>
+                                <input type="file" id="profilePhoto" name="profile_photo" accept="image/*" disabled>
                                 <label for="profilePhoto" class="file-upload-label">
                                     <i class='bx bx-upload'></i>
                                     <span>Upload Photo</span>
@@ -101,55 +287,40 @@ $pageSubtitle = 'Manage your account settings';
             <div class="activity-log-card">
                 <h3 class="card-title">Recent Activity</h3>
                 <div class="activity-list">
-                    <div class="activity-item">
-                        <div class="activity-icon login">
-                            <i class='bx bx-log-in'></i>
+                    <?php if (!empty($activities)): ?>
+                        <?php foreach ($activities as $item): ?>
+                            <div class="activity-item">
+                                <div class="activity-icon login">
+                                    <i class='bx bx-time'></i>
+                                </div>
+                                <div class="activity-details">
+                                    <p class="activity-title"><?php echo htmlspecialchars($item['action']); ?></p>
+                                    <p class="activity-time"><?php echo date('M d, Y \a\t g:i A', strtotime($item['created_at'])); ?></p>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php if (!empty($adminProfile['last_login'])): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon login">
+                                <i class='bx bx-log-in'></i>
+                            </div>
+                            <div class="activity-details">
+                                <p class="activity-title">Last login</p>
+                                <p class="activity-time"><?php echo date('M d, Y \a\t g:i A', strtotime($adminProfile['last_login'])); ?></p>
+                            </div>
                         </div>
-                        <div class="activity-details">
-                            <p class="activity-title">Logged in</p>
-                            <p class="activity-time">Jan 15, 2024 at 2:30 PM</p>
+                        <?php endif; ?>
+                        <div class="activity-item">
+                            <div class="activity-icon login">
+                                <i class='bx bx-user-plus'></i>
+                            </div>
+                            <div class="activity-details">
+                                <p class="activity-title">Account created</p>
+                                <p class="activity-time"><?php echo date('M d, Y \a\t g:i A', strtotime($adminProfile['created_at'])); ?></p>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="activity-item">
-                        <div class="activity-icon update">
-                            <i class='bx bx-edit'></i>
-                        </div>
-                        <div class="activity-details">
-                            <p class="activity-title">Updated product #VV-234</p>
-                            <p class="activity-time">Jan 15, 2024 at 11:15 AM</p>
-                        </div>
-                    </div>
-
-                    <div class="activity-item">
-                        <div class="activity-icon order">
-                            <i class='bx bx-package'></i>
-                        </div>
-                        <div class="activity-details">
-                            <p class="activity-title">Processed order #VV-10233</p>
-                            <p class="activity-time">Jan 14, 2024 at 4:20 PM</p>
-                        </div>
-                    </div>
-
-                    <div class="activity-item">
-                        <div class="activity-icon create">
-                            <i class='bx bx-plus-circle'></i>
-                        </div>
-                        <div class="activity-details">
-                            <p class="activity-title">Added new product</p>
-                            <p class="activity-time">Jan 14, 2024 at 10:45 AM</p>
-                        </div>
-                    </div>
-
-                    <div class="activity-item">
-                        <div class="activity-icon login">
-                            <i class='bx bx-log-in'></i>
-                        </div>
-                        <div class="activity-details">
-                            <p class="activity-title">Logged in</p>
-                            <p class="activity-time">Jan 14, 2024 at 9:00 AM</p>
-                        </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -159,10 +330,14 @@ $pageSubtitle = 'Manage your account settings';
 
     <!-- Change Password Modal -->
     <div class="modal-overlay" id="changePasswordModal">
-        <div class="modal-container">
+        <div class="modal-container password-modal">
             <div class="modal-header">
-                <h2>Change Password</h2>
-                <button class="modal-close" onclick="closePasswordModal()">
+                <div class="modal-title-group">
+                    <p class="eyebrow">Security</p>
+                    <h2>Change Password</h2>
+                    <p class="subtitle">Use a strong, unique password you don't use elsewhere.</p>
+                </div>
+                <button class="modal-close" onclick="closePasswordModal()" aria-label="Close password modal">
                     <i class='bx bx-x'></i>
                 </button>
             </div>
@@ -170,24 +345,38 @@ $pageSubtitle = 'Manage your account settings';
                 <form id="changePasswordForm">
                     <div class="form-group">
                         <label for="currentPassword">Current Password</label>
-                        <input type="password" id="currentPassword" placeholder="Enter current password" required>
+                        <div class="input-with-icon">
+                            <i class='bx bx-lock-alt'></i>
+                            <input type="password" id="currentPassword" placeholder="Enter current password" required>
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label for="newPassword">New Password</label>
-                        <input type="password" id="newPassword" placeholder="Enter new password" required>
-                        <span class="input-hint">Must be at least 8 characters</span>
+                        <div class="input-with-icon">
+                            <i class='bx bx-key'></i>
+                            <input type="password" id="newPassword" placeholder="Minimum 8 characters" required>
+                        </div>
+                        <span class="input-hint">Use at least 8 characters with a mix of letters, numbers, and symbols.</span>
                     </div>
 
                     <div class="form-group">
                         <label for="confirmPassword">Confirm New Password</label>
-                        <input type="password" id="confirmPassword" placeholder="Re-enter new password" required>
+                        <div class="input-with-icon">
+                            <i class='bx bx-check-shield'></i>
+                            <input type="password" id="confirmPassword" placeholder="Re-enter new password" required>
+                        </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary" onclick="closePasswordModal()">Cancel</button>
-                <button class="btn-primary" onclick="submitPasswordChange()">Update Password</button>
+                <div class="modal-footer-actions">
+                    <button class="btn-secondary" type="button" onclick="closePasswordModal()">Cancel</button>
+                    <button class="btn-primary" type="button" onclick="submitPasswordChange()">
+                        <i class='bx bx-save'></i>
+                        Update Password
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -244,56 +433,14 @@ $pageSubtitle = 'Manage your account settings';
         });
 
         cancelEditBtn.addEventListener('click', function() {
-            isEditing = false;
-            formInputs.forEach(input => {
-                input.setAttribute('readonly', 'true');
-                if (input.tagName === 'SELECT') {
-                    input.setAttribute('disabled', 'true');
-                }
-                if (input.type === 'file') {
-                    input.setAttribute('disabled', 'true');
-                }
-            });
-            formActions.style.display = 'none';
-            editProfileBtn.style.display = 'flex';
-            
-            // Reset form values
-            document.getElementById('firstName').value = 'Sarah';
-            document.getElementById('lastName').value = 'Anderson';
-            document.getElementById('email').value = 'sarah.anderson@velvetvogue.com';
-            document.getElementById('mobileNumber').value = '+1 (555) 123-4567';
-            document.getElementById('dateOfBirth').value = '1990-05-15';
-            document.getElementById('gender').value = 'female';
-            
-            Toast.fire({
-                icon: 'info',
-                title: 'Changes cancelled'
-            });
+            window.location.reload();
         });
 
-        // Profile Form Submit
+        // Profile Form Submit - Update full_name before submission
         document.getElementById('profileForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Here you would send the data to your backend
-            
-            isEditing = false;
-            formInputs.forEach(input => {
-                input.setAttribute('readonly', 'true');
-                if (input.tagName === 'SELECT') {
-                    input.setAttribute('disabled', 'true');
-                }
-                if (input.type === 'file') {
-                    input.setAttribute('disabled', 'true');
-                }
-            });
-            formActions.style.display = 'none';
-            editProfileBtn.style.display = 'flex';
-            
-            Toast.fire({
-                icon: 'success',
-                title: 'Profile updated successfully!'
-            });
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            document.getElementById('fullName').value = firstName + ' ' + lastName;
         });
 
         // Change Password Modal
@@ -338,12 +485,37 @@ $pageSubtitle = 'Manage your account settings';
                 return;
             }
 
-            // Here you would send the password change to your backend
+            // Send password change to backend
+            const formData = new FormData();
+            formData.append('change_password', '1');
+            formData.append('current_password', currentPassword);
+            formData.append('new_password', newPassword);
+            formData.append('confirm_password', confirmPassword);
             
-            closePasswordModal();
-            Toast.fire({
-                icon: 'success',
-                title: 'Password changed successfully!'
+            fetch('adminProfile.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closePasswordModal();
+                    Toast.fire({
+                        icon: 'success',
+                        title: data.message
+                    });
+                } else {
+                    Toast.fire({
+                        icon: 'error',
+                        title: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                Toast.fire({
+                    icon: 'error',
+                    title: 'An error occurred'
+                });
             });
         }
 

@@ -507,8 +507,16 @@ foreach ($orders as $order) {
 
                         // Populate items
                         const itemsList = document.getElementById('modalOrderItems');
+                        const normalizeImagePath = (url) => {
+                            if (!url) return '../images/hero-img.png';
+                            if (url.startsWith('http')) return url;
+                            if (url.startsWith('../')) return url;
+                            if (url.startsWith('./')) return '..' + url.slice(1);
+                            return '../' + url.replace(/^\/+/, '');
+                        };
+
                         itemsList.innerHTML = order.items.map(item => {
-                            const imagePath = item.image_url ? `../${item.image_url}` : '../images/hero-img.png';
+                            const imagePath = normalizeImagePath(item.image_url);
                             const itemName = item.product_name || 'Product';
                             const size = item.size || 'N/A';
                             const color = item.color || 'N/A';

@@ -1,7 +1,8 @@
 <?php   
 session_start();
 // Check if user is logged in
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) 
+    || $_SESSION['logged_in'] !== true) {
     header("Location: login.php");
     exit();
 }
@@ -120,7 +121,7 @@ $display_name = !empty($user['full_name']) ? $user['full_name'] : $user['usernam
                     <p class="profile-email"><?php echo htmlspecialchars($user['email'] ?? 'No email provided'); ?></p>
                     <p class="profile-phone"><?php echo htmlspecialchars($user['phone'] ?? 'No phone provided'); ?></p>
                 </div>
-                <a href="editProfile.php" class="edit-profile-btn">
+                <a href="editProfile.php" class="edit-profile-btn" style="text-decoration: none;">
                     <i class='bx bx-edit'></i>
                     <span>Edit Profile</span>
                 </a>
@@ -150,7 +151,7 @@ $display_name = !empty($user['full_name']) ? $user['full_name'] : $user['usernam
 
                 <div class="stat-card">
                     <div class="stat-icon pending">
-                        <i class='bx bx-truck'></i>
+                        <i class='bx bx-package'></i> 
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-number"><?php echo $pending_orders; ?></h3>
@@ -173,7 +174,7 @@ $display_name = !empty($user['full_name']) ? $user['full_name'] : $user['usernam
             <div class="profile-section">
                 <div class="section-header">
                     <h2 class="section-title">Recent Orders</h2>
-                    <a href="order.php" class="view-all-link">View All</a>
+                    <a href="order.php" class="view-all-link" style="text-decoration: none;">View All</a>
                 </div>
 
                 <div class="orders-list">
@@ -208,7 +209,7 @@ $display_name = !empty($user['full_name']) ? $user['full_name'] : $user['usernam
                             <div class="order-amount">
                                 <span class="amount">$<?php echo number_format($order['total_amount'], 2); ?></span>
                             </div>
-                            <a href="order.php?order_id=<?php echo $order['order_id']; ?>" class="order-action-btn"><?php echo $button_text; ?></a>
+                            <a href="order.php?order_id=<?php echo $order['order_id']; ?>" class="order-action-btn" style="text-decoration: none;"><?php echo $button_text; ?></a>
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -219,7 +220,7 @@ $display_name = !empty($user['full_name']) ? $user['full_name'] : $user['usernam
             <div class="profile-section">
                 <div class="section-header">
                     <h2 class="section-title">Saved Addresses</h2>
-                    <a href="address.php" class="add-new-btn">
+                    <a href="address.php" class="add-new-btn" style="text-decoration: none;">
                         <i class='bx bx-plus'></i>
                         <span>Add New</span>
                     </a>

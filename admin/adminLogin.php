@@ -17,7 +17,7 @@
             $stmt->bind_result($userId, $hashedPassword, $userType);
             $stmt->fetch();
 
-            if(password_verify($password, $hashedPassword)){
+            if($hashedPassword && password_verify($password, $hashedPassword)){
                 $_SESSION['user_id'] = $userId;
                 $_SESSION['username'] = $username;
                 $_SESSION['user_type'] = $userType;
@@ -28,6 +28,17 @@
                 $updateStmt->bind_param('i', $userId);
                 $updateStmt->execute();
                 $updateStmt->close();
+
+                // Log login activity if table exists
+                try {
+                    $logStmt = $conn->prepare("INSERT INTO activity_log (user_id, action) VALUES (?, ?)");
+                    $action = 'Logged in';
+                    $logStmt->bind_param('is', $userId, $action);
+                    $logStmt->execute();
+                    $logStmt->close();
+                } catch (Exception $e) {
+                    // ignore if logging fails
+                }
                 
                 header("Location: dashboard.php");
                 exit();
@@ -61,6 +72,7 @@
             --font-family-primary: 'Montserrat', sans-serif;
             --font-family-secondary: 'Open Sans', sans-serif;
             --bg-light: #f8f9fa;
+            --gradient-primary: linear-gradient(135deg, #3C91E6, #2B6FBF);
         }
 
         * {
@@ -71,7 +83,7 @@
 
         body {
             font-family: var(--font-family-secondary);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -91,7 +103,7 @@
         }
 
         .login-banner {
-            background: linear-gradient(135deg, var(--primary-btn) 0%, #667eea 100%);
+            background: var(--gradient-primary);
             padding: 60px 40px;
             display: flex;
             flex-direction: column;

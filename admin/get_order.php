@@ -55,6 +55,18 @@ $items_result = $stmt_items->get_result();
 
 $items = [];
 while ($item = $items_result->fetch_assoc()) {
+    if (!empty($item['image_url'])) {
+        // Normalize path for admin context: ensure it starts with ../ or is absolute
+        if (strpos($item['image_url'], 'http') === 0) {
+            // leave absolute URLs as-is
+        } elseif (strpos($item['image_url'], '../') === 0) {
+            // already relative to project root
+        } elseif (strpos($item['image_url'], './') === 0) {
+            $item['image_url'] = '../' . ltrim($item['image_url'], './');
+        } else {
+            $item['image_url'] = '../' . ltrim($item['image_url'], '/');
+        }
+    }
     $items[] = $item;
 }
 $stmt_items->close();

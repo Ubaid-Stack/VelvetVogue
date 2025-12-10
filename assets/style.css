@@ -3211,6 +3211,123 @@
     cursor: pointer;
 }
 
+/* Payment Fields Container */
+#creditCardFields,
+#paypalFields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* PayPal Email Input */
+.payment-method input[type="email"] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-family: var(--font-family-secondary);
+    font-size: 14px;
+    color: var(--text-body);
+    background-color: #f8f9fa;
+    outline: none;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.payment-method input[type="email"]:focus {
+    border-color: var(--primary-btn);
+    background-color: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(60, 145, 230, 0.1);
+}
+
+/* Card Number Formatting */
+#creditCardFields input#cardNumber {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 1px;
+}
+
+/* Grid for Expiry and CVV */
+#creditCardFields > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+#creditCardFields > div > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* CVV Input with Security Icon */
+#cvv {
+    position: relative;
+}
+
+/* PayPal Info Box */
+#paypalFields > div[style*="background"] {
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%) !important;
+    padding: 15px !important;
+    border-radius: 12px !important;
+    margin-top: 15px !important;
+    border-left: 4px solid #0070ba !important;
+    box-shadow: 0 2px 8px rgba(0, 112, 186, 0.1);
+}
+
+#paypalFields > div[style*="background"] p {
+    margin: 0 !important;
+    font-size: 14px !important;
+    color: #495057 !important;
+    line-height: 1.6 !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#paypalFields > div[style*="background"] i {
+    color: #0070ba !important;
+    font-size: 24px !important;
+    vertical-align: middle !important;
+    flex-shrink: 0;
+}
+
+/* Input Icons */
+.payment-method label {
+    position: relative;
+}
+
+/* Card Brand Icons */
+.card-brands {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+}
+
+.card-brands img {
+    height: 24px;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+.card-brands img:hover {
+    opacity: 1;
+}
+
 /* Continue Button */
 .continue-btn {
     width: 100%;

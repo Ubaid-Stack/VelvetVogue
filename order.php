@@ -321,96 +321,219 @@ $ordersStmt->close();
 
         // Rate Product
         function rateProduct(orderNumber) {
+            // First, fetch products from this order
             Swal.fire({
-                title: 'Rate Your Product',
-                html: `
-                    <div style="text-align: center; padding: 20px 0;">
-                        <p style="margin-bottom: 20px; color: #6B7280; font-size: 15px;">How would you rate your purchase?</p>
-                        <div class="rating-stars" style="margin-bottom: 25px; display: flex; justify-content: center; gap: 10px;">
-                            <i class='bx bx-star rating-star' data-rating="1" style="font-size: 40px; color: #D1D5DB; cursor: pointer; transition: all 0.2s;"></i>
-                            <i class='bx bx-star rating-star' data-rating="2" style="font-size: 40px; color: #D1D5DB; cursor: pointer; transition: all 0.2s;"></i>
-                            <i class='bx bx-star rating-star' data-rating="3" style="font-size: 40px; color: #D1D5DB; cursor: pointer; transition: all 0.2s;"></i>
-                            <i class='bx bx-star rating-star' data-rating="4" style="font-size: 40px; color: #D1D5DB; cursor: pointer; transition: all 0.2s;"></i>
-                            <i class='bx bx-star rating-star' data-rating="5" style="font-size: 40px; color: #D1D5DB; cursor: pointer; transition: all 0.2s;"></i>
-                        </div>
-                        <textarea id="reviewText" placeholder="Write your review here (optional)..." style="width: 100%; min-height: 100px; padding: 12px; border: 2px solid #E5E7EB; border-radius: 10px; font-family: inherit; font-size: 14px; resize: vertical; margin-top: 10px;"></textarea>
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Submit Rating',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#3C91E6',
-                cancelButtonColor: '#6B7280',
+                title: 'Loading...',
+                allowOutsideClick: false,
                 didOpen: () => {
-                    let selectedRating = 0;
-                    const stars = document.querySelectorAll('.rating-star');
+                    Swal.showLoading();
+                }
+            });
+            
+            const formData = new FormData();
+            formData.append('order_number', orderNumber);
+            
+            fetch('get_order_products.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.products.length > 0) {
+                    // Build products HTML
+                    let productsHtml = '<div style="max-height: 400px; overflow-y: auto; padding: 10px;">';
                     
-                    stars.forEach(star => {
-                        star.addEventListener('mouseenter', function() {
-                            const rating = parseInt(this.getAttribute('data-rating'));
-                            highlightStars(rating);
-                        });
+                    data.products.forEach((product, index) => {
+                        const hasReview = product.has_review;
+                        const starsFilled = hasReview ? '★'.repeat(product.rating) + '☆'.repeat(5 - product.rating) : '';
                         
-                        star.addEventListener('click', function() {
-                            selectedRating = parseInt(this.getAttribute('data-rating'));
-                            highlightStars(selectedRating);
-                        });
+                        productsHtml += `
+                            <div class="review-product-item" style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 15px; margin-bottom: 15px; background: #f9fafb;">
+                                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                                    <img src="${product.image_url}" alt="${product.product_name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
+                                    <div style="flex: 1; text-align: left;">
+                                        <strong style="font-size: 14px;">${product.product_name}</strong>
+                                        ${hasReview ? `<div style="color: #10b981; font-size: 12px; margin-top: 4px;">✓ Already reviewed (${starsFilled})</div>` : ''}
+                                    </div>
+                                </div>
+                                <div class="rating-stars-${index}" style="margin-bottom: 12px; display: flex; justify-content: center; gap: 8px;">
+                                    ${[1,2,3,4,5].map(i => `<i class='bx ${hasReview && i <= product.rating ? 'bxs-star' : 'bx-star'} rating-star' data-product="${index}" data-rating="${i}" style="font-size: 32px; color: ${hasReview && i <= product.rating ? '#FFDD67' : '#D1D5DB'}; cursor: pointer;"></i>`).join('')}
+                                </div>
+                                <textarea class="review-text-${index}" placeholder="Write your review (optional)..." style="width: 100%; min-height: 80px; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 13px; resize: vertical;">${hasReview ? product.review_text || '' : ''}</textarea>
+                                <input type="hidden" class="product-id-${index}" value="${product.product_id}">
+                                <input type="hidden" class="selected-rating-${index}" value="${hasReview ? product.rating : 0}">
+                            </div>
+                        `;
                     });
                     
-                    document.querySelector('.rating-stars').addEventListener('mouseleave', function() {
-                        if (selectedRating > 0) {
-                            highlightStars(selectedRating);
-                        } else {
-                            stars.forEach(s => {
-                                s.classList.remove('bxs-star');
-                                s.classList.add('bx-star');
-                                s.style.color = '#D1D5DB';
+                    productsHtml += '</div>';
+                    
+                    Swal.fire({
+                        title: 'Rate Your Products',
+                        html: productsHtml,
+                        width: '600px',
+                        showCancelButton: true,
+                        confirmButtonText: 'Submit Reviews',
+                        cancelButtonText: 'Cancel',
+                        confirmButtonColor: '#3C91E6',
+                        cancelButtonColor: '#6B7280',
+                        didOpen: () => {
+                            // Setup star rating interaction for each product
+                            data.products.forEach((product, index) => {
+                                const stars = document.querySelectorAll(`.rating-stars-${index} .rating-star`);
+                                let selectedRating = document.querySelector(`.selected-rating-${index}`);
+                                
+                                stars.forEach(star => {
+                                    star.addEventListener('mouseenter', function() {
+                                        const rating = parseInt(this.getAttribute('data-rating'));
+                                        highlightStars(stars, rating);
+                                    });
+                                    
+                                    star.addEventListener('click', function() {
+                                        const rating = parseInt(this.getAttribute('data-rating'));
+                                        selectedRating.value = rating;
+                                        highlightStars(stars, rating);
+                                    });
+                                });
+                                
+                                const ratingContainer = document.querySelector(`.rating-stars-${index}`);
+                                ratingContainer.addEventListener('mouseleave', function() {
+                                    const currentRating = parseInt(selectedRating.value);
+                                    if (currentRating > 0) {
+                                        highlightStars(stars, currentRating);
+                                    } else {
+                                        stars.forEach(s => {
+                                            s.classList.remove('bxs-star');
+                                            s.classList.add('bx-star');
+                                            s.style.color = '#D1D5DB';
+                                        });
+                                    }
+                                });
+                            });
+                            
+                            function highlightStars(stars, rating) {
+                                stars.forEach((s, index) => {
+                                    if (index < rating) {
+                                        s.classList.remove('bx-star');
+                                        s.classList.add('bxs-star');
+                                        s.style.color = '#FFDD67';
+                                    } else {
+                                        s.classList.remove('bxs-star');
+                                        s.classList.add('bx-star');
+                                        s.style.color = '#D1D5DB';
+                                    }
+                                });
+                            }
+                        },
+                        preConfirm: () => {
+                            const reviews = [];
+                            let hasError = false;
+                            
+                            data.products.forEach((product, index) => {
+                                const rating = parseInt(document.querySelector(`.selected-rating-${index}`).value);
+                                const reviewText = document.querySelector(`.review-text-${index}`).value;
+                                const productId = document.querySelector(`.product-id-${index}`).value;
+                                
+                                if (rating === 0) {
+                                    Swal.showValidationMessage('Please rate all products');
+                                    hasError = true;
+                                    return false;
+                                }
+                                
+                                reviews.push({
+                                    product_id: productId,
+                                    rating: rating,
+                                    review_text: reviewText
+                                });
+                            });
+                            
+                            if (hasError) return false;
+                            return reviews;
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Submit all reviews
+                            const reviews = result.value;
+                            let completed = 0;
+                            let failed = 0;
+                            
+                            Swal.fire({
+                                title: 'Submitting Reviews...',
+                                allowOutsideClick: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+                            
+                            reviews.forEach(review => {
+                                const formData = new FormData();
+                                formData.append('order_number', orderNumber);
+                                formData.append('product_id', review.product_id);
+                                formData.append('rating', review.rating);
+                                formData.append('review_text', review.review_text);
+                                
+                                fetch('submit_review.php', {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        completed++;
+                                    } else {
+                                        failed++;
+                                    }
+                                    
+                                    // Check if all requests completed
+                                    if (completed + failed === reviews.length) {
+                                        if (failed === 0) {
+                                            Swal.fire({
+                                                title: 'Thank You!',
+                                                html: `Your reviews have been submitted successfully.<br><small>We appreciate your feedback!</small>`,
+                                                icon: 'success',
+                                                confirmButtonColor: '#3C91E6'
+                                            });
+                                        } else {
+                                            Swal.fire({
+                                                title: 'Partially Completed',
+                                                html: `${completed} reviews submitted, ${failed} failed.`,
+                                                icon: 'warning',
+                                                confirmButtonColor: '#3C91E6'
+                                            });
+                                        }
+                                    }
+                                })
+                                .catch(error => {
+                                    failed++;
+                                    if (completed + failed === reviews.length) {
+                                        Swal.fire({
+                                            title: 'Error',
+                                            text: 'Some reviews failed to submit',
+                                            icon: 'error',
+                                            confirmButtonColor: '#EF4444'
+                                        });
+                                    }
+                                });
                             });
                         }
                     });
-                    
-                    function highlightStars(rating) {
-                        stars.forEach((s, index) => {
-                            if (index < rating) {
-                                s.classList.remove('bx-star');
-                                s.classList.add('bxs-star');
-                                s.style.color = '#FFDD67';
-                            } else {
-                                s.classList.remove('bxs-star');
-                                s.classList.add('bx-star');
-                                s.style.color = '#D1D5DB';
-                            }
-                        });
-                    }
-                    
-                    // Store selected rating for submission
-                    Swal.getConfirmButton().addEventListener('click', function() {
-                        if (selectedRating === 0) {
-                            Swal.showValidationMessage('Please select a rating');
-                            return false;
-                        }
-                    });
-                },
-                preConfirm: () => {
-                    const rating = document.querySelectorAll('.bxs-star').length;
-                    const review = document.getElementById('reviewText').value;
-                    
-                    if (rating === 0) {
-                        Swal.showValidationMessage('Please select a rating');
-                        return false;
-                    }
-                    
-                    return { rating: rating, review: review };
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
+                } else {
                     Swal.fire({
-                        title: 'Thank You!',
-                        html: `Your ${result.value.rating}-star rating has been submitted successfully.<br><small>We appreciate your feedback!</small>`,
-                        icon: 'success',
-                        confirmButtonColor: '#3C91E6'
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No products found in this order',
+                        confirmButtonColor: '#EF4444'
                     });
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to load order products',
+                    confirmButtonColor: '#EF4444'
+                });
             });
         }
     </script>

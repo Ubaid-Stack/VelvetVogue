@@ -18,21 +18,13 @@
                 <i class='bx bx-shopping-bag'></i>
                 <span>Manage Orders</span>
             </a>
-            <a href="customers.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'customers.php') ? 'active' : ''; ?>">
-                <i class='bx bx-group'></i>
-                <span>Manage Customers</span>
-            </a>
-            <a href="reviews.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'reviews.php') ? 'active' : ''; ?>">
-                <i class='bx bx-star'></i>
-                <span>Reviews & Ratings</span>
-            </a>
-            <a href="analytics.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'analytics.php') ? 'active' : ''; ?>">
-                <i class='bx bx-bar-chart-alt-2'></i>
-                <span>Analytics</span>
-            </a>
             <a href="adminProfile.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'adminProfile.php') ? 'active' : ''; ?>">
                 <i class='bx bx-user-circle'></i>
                 <span>Admin Profile</span>
+            </a>
+            <a href="createAdmin.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'createAdmin.php') ? 'active' : ''; ?>">
+                <i class='bx bx-user-plus'></i>
+                <span>Create Admin</span>
             </a>
             <a href="systemSetting.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'systemSetting.php') ? 'active' : ''; ?>">
                 <i class='bx bx-cog'></i>
@@ -41,7 +33,7 @@
         </nav>
 
         <div class="sidebar-footer">
-            <a href="#" class="nav-item logout">
+            <a href="../logout.php" class="nav-item logout">
                 <i class='bx bx-log-out'></i>
                 <span>Logout</span>
             </a>

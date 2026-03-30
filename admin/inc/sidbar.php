@@ -18,6 +18,10 @@
                 <i class='bx bx-shopping-bag'></i>
                 <span>Manage Orders</span>
             </a>
+            <a href="manageInquiry.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'manageInquiry.php') ? 'active' : ''; ?>">
+                <i class='bx bx-envelope-open'></i>
+                <span>Manage Inquiries</span>
+            </a>
             <a href="adminProfile.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'adminProfile.php') ? 'active' : ''; ?>">
                 <i class='bx bx-user-circle'></i>
                 <span>Admin Profile</span>

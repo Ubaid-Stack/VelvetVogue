@@ -10,6 +10,8 @@ $offset = ($page - 1) * $products_per_page;
 $category_filter = isset($_GET['category']) ? $_GET['category'] : '';
 $price_max = isset($_GET['price']) ? intval($_GET['price']) : 10000;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$size_filter = isset($_GET['size']) ? trim($_GET['size']) : '';
+$color_filter = isset($_GET['color']) ? trim($_GET['color']) : '';
 
 // Build query
 $where_conditions = ["p.status = 'active'"];
@@ -34,6 +36,18 @@ if (!empty($search)) {
     $params[] = $search_param;
     $params[] = $search_param;
     $types .= 'ss';
+}
+
+if (!empty($size_filter)) {
+    $where_conditions[] = "EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.product_id AND LOWER(pv.size) = LOWER(?) AND pv.is_available = 1)";
+    $params[] = $size_filter;
+    $types .= 's';
+}
+
+if (!empty($color_filter)) {
+    $where_conditions[] = "EXISTS (SELECT 1 FROM product_variants pv2 WHERE pv2.product_id = p.product_id AND LOWER(pv2.color) = LOWER(?) AND pv2.is_available = 1)";
+    $params[] = $color_filter;
+    $types .= 's';
 }
 
 $where_sql = implode(' AND ', $where_conditions);
@@ -88,6 +102,21 @@ $categories = [];
 while ($cat = $categories_result->fetch_assoc()) {
     $categories[] = $cat;
 }
+
+// Fetch distinct colors from available variants for the color filter
+$colors_sql = "SELECT DISTINCT pv.color 
+                             FROM product_variants pv 
+                             JOIN products p ON pv.product_id = p.product_id 
+                             WHERE pv.color IS NOT NULL AND pv.color != '' 
+                                 AND p.status = 'active' AND pv.is_available = 1
+                             ORDER BY pv.color ASC";
+$colors_result = $conn->query($colors_sql);
+$colors = [];
+if ($colors_result) {
+    while ($color_row = $colors_result->fetch_assoc()) {
+        $colors[] = $color_row['color'];
+    }
+}
 ?>
 <?php include './inc/header.php'; ?>
     
@@ -120,24 +149,32 @@ while ($cat = $categories_result->fetch_assoc()) {
             <div class="filter-group">
                 <label for="size">Size</label>
                 <select id="size" name="size">
-                    <option value="xs">XS</option>
-                    <option value="s">S</option>
-                    <option value="m">M</option>
-                    <option value="l">L</option>
-                    <option value="xl">XL</option>
-                    <option value="xxl">XXL</option>
+                    <option value="" <?php echo $size_filter === '' ? 'selected' : ''; ?>>All Sizes</option>
+                    <?php 
+                        $size_options = ['XS','S','M','L','XL','XXL'];
+                        foreach ($size_options as $size_option):
+                    ?>
+                        <option value="<?php echo strtolower($size_option); ?>" <?php echo strtolower($size_filter) === strtolower($size_option) ? 'selected' : ''; ?>><?php echo $size_option; ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <!-- this is color dropdown -->
             <div class="filter-group">
                 <label for="color">Color</label>
                 <select id="color" name="color">
-                    <option value="red">Red</option>
-                    <option value="blue">Blue</option>
-                    <option value="green">Green</option>
-                    <option value="black">Black</option>
-                    <option value="white">White</option>
-                    <option value="yellow">Yellow</option>
+                    <option value="" <?php echo $color_filter === '' ? 'selected' : ''; ?>>All Colors / All Colours</option>
+                    <?php if (!empty($colors)): ?>
+                        <?php foreach ($colors as $color_option): ?>
+                            <option value="<?php echo htmlspecialchars(strtolower($color_option)); ?>" <?php echo strtolower($color_filter) === strtolower($color_option) ? 'selected' : ''; ?>><?php echo htmlspecialchars(ucwords($color_option)); ?></option>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php 
+                            $default_colors = ['red','blue','green','black','white','yellow'];
+                            foreach ($default_colors as $default_color):
+                        ?>
+                            <option value="<?php echo $default_color; ?>" <?php echo strtolower($color_filter) === $default_color ? 'selected' : ''; ?>><?php echo ucfirst($default_color); ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </select>
             </div>
             <!-- this is price range dropdown -->
@@ -214,7 +251,7 @@ while ($cat = $categories_result->fetch_assoc()) {
     <section class="pagination-con">
         <div class="pagination">
             <?php if ($page > 1): ?>
-                <a href="?page=<?php echo $page - 1; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?>" class="prev-page"><i class='bx bx-chevron-left'></i> Previous</a>
+                <a href="?page=<?php echo $page - 1; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?><?php echo !empty($size_filter) ? '&size=' . urlencode($size_filter) : ''; ?><?php echo !empty($color_filter) ? '&color=' . urlencode($color_filter) : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>" class="prev-page"><i class='bx bx-chevron-left'></i> Previous</a>
             <?php endif; ?>
             
             <?php 
@@ -223,11 +260,11 @@ while ($cat = $categories_result->fetch_assoc()) {
             
             for ($i = $start_page; $i <= $end_page; $i++): 
             ?>
-                <a href="?page=<?php echo $i; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?>" class="page-number <?php echo $i == $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                <a href="?page=<?php echo $i; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?><?php echo !empty($size_filter) ? '&size=' . urlencode($size_filter) : ''; ?><?php echo !empty($color_filter) ? '&color=' . urlencode($color_filter) : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>" class="page-number <?php echo $i == $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
             <?php endfor; ?>
             
             <?php if ($page < $total_pages): ?>
-                <a href="?page=<?php echo $page + 1; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?>" class="next-page">Next <i class='bx bx-chevron-right'></i></a>
+                <a href="?page=<?php echo $page + 1; ?><?php echo !empty($category_filter) ? '&category=' . $category_filter : ''; ?><?php echo $price_max < 10000 ? '&price=' . $price_max : ''; ?><?php echo !empty($size_filter) ? '&size=' . urlencode($size_filter) : ''; ?><?php echo !empty($color_filter) ? '&color=' . urlencode($color_filter) : ''; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>" class="next-page">Next <i class='bx bx-chevron-right'></i></a>
             <?php endif; ?>
         </div>
     </section>
@@ -276,6 +313,10 @@ while ($cat = $categories_result->fetch_assoc()) {
         document.querySelector('.apply-filter-btn').addEventListener('click', () => {
             const category = document.getElementById('category').value;
             const price = document.getElementById('priceRange').value;
+            const size = document.getElementById('size').value;
+            const color = document.getElementById('color').value;
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentSearch = urlParams.get('search');
             
             let url = 'shop.php?';
             const params = [];
@@ -286,8 +327,17 @@ while ($cat = $categories_result->fetch_assoc()) {
             if (price < 1000) {
                 params.push('price=' + price);
             }
+            if (size) {
+                params.push('size=' + encodeURIComponent(size));
+            }
+            if (color) {
+                params.push('color=' + encodeURIComponent(color));
+            }
+            if (currentSearch) {
+                params.push('search=' + encodeURIComponent(currentSearch));
+            }
             
-            url += params.join('&');
+            url = params.length ? url + params.join('&') : 'shop.php';
             window.location.href = url;
         });
 

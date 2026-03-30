@@ -28,6 +28,6 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION[
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Admin CSS -->
-    <link rel="stylesheet" href="../assets/admin.css">
+    <link rel="stylesheet" href="../assets/admin.css?v=<?php echo filemtime(__DIR__ . '/../../assets/admin.css'); ?>">
 </head>
 <body>
